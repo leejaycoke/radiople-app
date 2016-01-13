@@ -1,0 +1,11 @@
+.col-date {
+    width: 160px;
+}
+
+.col-length {
+    width: 100px;
+}
+
+td {
+    cursor: pointer;
+}

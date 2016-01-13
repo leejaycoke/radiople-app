@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+
+"""
+Radiople Script
+
+Usage:
+    run.py crawler --channel-id=<channel_id>
+
+Options:
+  -h --help     Show this screen.
+  --version     Show version.
+"""
+
+import sys
+from os import path
+
+script_path = path.dirname(path.realpath(__file__))
+home = path.realpath(path.join(script_path, '../'))
+sys.path.append(home)
+
+
+def start_main(args):
+    if args['crawler']:
+        run_crawler(args)
+
+
+def run_crawler(args):
+    from script import crawler
+    crawler.run(args)
+
+if __name__ == "__main__":
+    from docopt import docopt
+    args = docopt(__doc__)
+    start_main(args)

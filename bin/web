@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+import sys
+import subprocess
+
+from os import path
+from flask.ext.script import Manager
+from flask.ext.script import Server
+
+script_path = path.dirname(path.realpath(__file__))
+home = path.realpath(path.join(script_path, '../'))
+sys.path.append(home)
+
+subprocess.call('find %s -name "*.pyc" -exec rm -rf {} \;' % home, shell=True)
+
+from radiople.web import app
+
+manager = Manager(app)
+manager.add_command("runserver", Server(host='0.0.0.0', port=5005))
+
+if __name__ == "__main__":
+    manager.run()

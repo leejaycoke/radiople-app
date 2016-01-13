@@ -1,0 +1,25 @@
+.h2-light {
+	color: #fff;
+}
+
+.h2-dark {
+	color: #333;
+}
+
+#page-first {
+	background-color: #428bca;
+}
+
+#page-second {
+	background-color: #f1f1f1;
+}
+
+
+.section {
+	padding: 15px;
+	text-align: center;
+}
+
+#page-first > p {
+	color: #fff;
+}

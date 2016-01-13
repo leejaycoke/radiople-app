@@ -1,0 +1,12 @@
+{% extends 'layout/auth.html' %} {% block content %}
+<div>
+    <div class="page-header">
+        <h2>이메일 주소 인증</h2>
+    </div>
+    <div class="row">
+        <div class="col-sm-12">
+            {% if error %} {{ error }} {% else %} 이메일 주소 인증이 완료되었습니다. {% endif %}
+        </div>
+    </div>
+</dlv>
+{% endblock %}

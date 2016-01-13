@@ -1,0 +1,93 @@
+{% extends 'layout/default.html' %} {% block body %}
+<div ng-controller="CreateController">
+    <div class="row hidden-xs">
+        <div class="page-header">
+            <h1>에피소드 등록</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">에피소드 정보</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group">
+                    <label><important>*</important> 에피소드 제목</label>
+                    <input type="text" class="form-control" ng-model="episode.title">
+                </div>
+                <div class="form-group">
+                    <label>에피소드 부제목</label>
+                    <input type="text" class="form-control" ng-model="episode.subtitle">
+                </div>
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <label><important>*</important> 방송 날짜 <small>(에피소드 순서에도 사용됩니다.)</small></label>
+                            <p class="input-group">
+                                <input type="text" class="form-control" datetime-picker="yyyy-MM-dd HH:mm" datepicker-options="dateOptions" timepicker-options="timeOptions" ng-model="episode.air_date" is-open="isOpenedDatePicker" close-text="닫기" time-text="시간선택" clear-text="초기화" today-text="오늘" date-text="날짜선택" now-text="현재시각" ng-change="airDateChanged()" />
+                                <span class="input-group-btn">
+                            <button type="button" class="btn btn-default" ng-click="isOpenedDatePicker = !isOpenedDatePicker"><span class="glyphicon glyphicon-calendar"></span></button>
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>초대손님</label>
+                    <div class="row" ng-repeat="guest in episode.guest track by $index">
+                        <div class="col-sm-6">
+                            <div class="form-group">
+                                <div class="input-group">
+                                    <input type="text" class="form-control input-sm" ng-model="episode.guest[$index]">
+                                    <span class="input-group-btn">
+                                    <button class="btn btn-danger btn-sm" type="button" ng-click="removeGuest($index)">삭제</button>
+                                </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-6">
+                            <button class="btn btn-primary btn-sm  btn-block" ng-click="addGuest()">출연진 추가</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>내용</label>
+                    <textarea class="form-control" ng-model="episode.description"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h3 class="panel-title">음원 파일 등록</h3>
+            </div>
+            <div class="panel-body">
+                <div class="form-group" ng-show="!episode.audio">
+                    <label>100MB까지 등록할 수 있습니다.</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" ng-model="audioFile.name" disabled>
+                        <div class="input-group-btn">
+                            <button type="file" class="btn btn-primary" ng-model="audioFile" accept="audio/mpeg,image/*" ngf-max-size="200MB" ng-disabled="isUploading || audio" ngf-select>파일 찾기</button>
+                        </div>
+                    </div>
+                </div>
+                <uib-progressbar class="progress-striped" value="progress" max="100" type="success" ng-show="isUploading">{[ progress ]}%</uib-progressbar>
+                <button type="button" class="btn btn-info btn-default pull-right" ng-click="upload('{{ config.audio.server.url }}')" ng-show="audioFile && !episode.audio" ng-disabled="!audioFile || isUploading">업로드 시작</button>
+                <uib-alert type="info" ng-show="episode.audio"><strong>{[ episode.audio.upload_filename ]}</strong></uib-alert>
+                <div class="well" ng-show="episode.audio">
+                    <div>재생 길이: {[ episode.audio.display_length ]}</div>
+                    <div>비트레이트: {[ episode.audio.display_bitrate ]}</div>
+                    <div>파일사이즈: {[ episode.audio.display_size ]}</div>
+                </div>
+                <button type="button" class="btn btn-danger btn-sm pull-right" ng-click="deleteAudio()" ng-show="episode.audio">음원 삭제</button>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <button type="button" class="btn btn-success btn-block" ng-click="create()" ng-disabled="isCreating">등록완료</button>
+    </div>
+</div>
+{% endblock %}

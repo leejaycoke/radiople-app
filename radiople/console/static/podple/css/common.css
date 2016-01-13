@@ -1,0 +1,163 @@
+@import url(http://fonts.googleapis.com/earlyaccess/nanumgothic.css);
+html {
+    height: 100%;
+}
+
+body {
+    font-family: "Nanum Gothic", sans-serif;
+    padding-top: 56px;
+    height: 100%;
+    background-color: #f1f1f1;
+}
+
+@media (max-width: 767px) {
+    .main {
+        margin-top: 70px;
+    }
+}
+
+.center {
+    text-align: center;
+}
+
+.rec {
+    border-radius: 0px;
+    -webkit-border-radius: 0px;
+    -moz-border-radius: 0px;
+}
+
+.sub-header {
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.navbar {
+    height: 56px;
+    background-color: #428bca;
+}
+
+.navbar-inverse .navbar-brand {
+    color: #fff;
+    line-height: 28px;
+}
+
+.navbar-fixed-top {
+    border-color: #428bca;
+}
+
+.content-wrapper,
+.content {
+    height: 100%;
+}
+
+.navbar-inverse .navbar-toggle {
+    background-color: #428bca;
+    border: 0;
+    margin: 0;
+    height: 56px;
+    width: 56px;
+}
+
+.navbar-inverse .navbar-toggle:hover,
+.navbar-inverse .navbar-toggle:focus {
+    background-color: #357EBD;
+}
+
+.navbar-inverse .navbar-toggle .icon-bar {
+    background-color: #fff;
+    margin-left: 7px;
+}
+
+.topbar {
+    position: fixed;
+    z-index: 1000;
+    width: 100%;
+    background-color: #fff;
+    height: 40px;
+    top: 57px;
+}
+
+.sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    top: 57px;
+    z-index: 1000;
+    padding: 20px;
+    overflow-y: auto;
+    border-right: 1px solid #e1e1e1;
+    background-color: #fff;
+    overflow-x: hidden;
+}
+
+.nav-topbar > li > a {
+    color: #666;
+}
+
+.nav-pills > li > a {
+    border-radius: 0;
+}
+
+.nav-sidebar {
+    margin-right: -21px;
+    margin-left: -20px;
+}
+
+.nav-sidebar > li {
+    border-bottom: 1px solid #f1f1f1;
+}
+
+.sidebar-sub > li {
+    padding: 15px;
+}
+
+.nav-sidebar > li > a {
+    color: #666;
+    padding-right: 20px;
+    padding-left: 20px;
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+.nav-sidebar > li > a:hover {
+    background-color: #f1f1f1;
+}
+
+.nav-sidebar > li > a > i {
+    margin-right: 6px;
+}
+
+.main {
+    padding-right: 40px;
+    padding-left: 40px;
+}
+
+.main .page-header {
+    margin-top: 0;
+}
+
+.placeholders {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+.placeholders h4 {
+    margin-bottom: 0;
+}
+
+.placeholder {
+    margin-bottom: 20px;
+}
+
+.placeholder img {
+    display: inline-block;
+    border-radius: 50%;
+}
+
+.required {
+    color: red;
+}
+
+important {
+    color: red;
+}

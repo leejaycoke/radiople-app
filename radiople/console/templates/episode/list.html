@@ -1,0 +1,50 @@
+{% extends 'layout/default.html' %} {% block body %}
+<div ng-controller="ListController">
+    <div class="row hidden-xs">
+        <div class="page-header">
+            <h1>에피소드 목록</h1>
+        </div>
+    </div>
+    <div class="row">
+        <div class="panel panel-default">
+            <div class="panel-heading clearfix">
+                <div class="pull-left">총 {[ paging.total_count ]} 개</div>
+                <button class="btn btn-success btn-sm pull-right" ng-click="create()">새로 등록</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <th class="col-sm-7">제목</th>
+                        <th class="col-sm-3">방송일</th>
+                        <th class="col-sm-1">재생길이</th>
+                        <th class="col-sm-1">좋아요</th>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="episode in episodes">
+                            <td ng-click="edit(episode.id)">
+                                <div>{[ episode.title ]}</div>
+                                <div ng-show="episode.subtitle"><small>{[ episode.subtitle ]}</small></div>
+                            </td>
+                            <td>{[ episode.air_date|date:'yyyy-MM-dd HH:mm' ]}</td>
+                            <td>{[ episode.audio.display_length ]}</td>
+                            <td>{[ episode.scoreboard.like_count ]}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="panel-footer">
+                <div class="input-group">
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default">제목</button>
+                    </span>
+                    <input type="text" class="form-control" ng-model="q" ng-enter="search()">
+                    <span class="input-group-btn"><button type="text" class="btn btn-primary" ng-click="search()">검색</button></span>
+                </div>
+            </div>
+        </div>
+        <div class="center">
+            <uib-pagination boundary-links="true" total-items="paging.total_count" ng-model="paging.page" previous-text="&lsaquo;" items-per-page="20" next-text="&rsaquo;" first-text="&laquo;" last-text="&raquo;" ng-change="pageChanged()"></uib-pagination>
+        </div>
+    </div>
+</div>
+{% endblock %}

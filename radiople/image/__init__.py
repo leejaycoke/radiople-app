@@ -29,6 +29,8 @@ app = Flask(__name__)
 
 app.debug = config.common.flask.debug
 
+app.config['MAX_CONTENT_LENGTH'] = config.image.upload.max_size
+
 
 @app.errorhandler(RadiopleException)
 def http_error_response(error):

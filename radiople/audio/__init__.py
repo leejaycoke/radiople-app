@@ -35,6 +35,8 @@ app = Flask(__name__)
 
 app.debug = config.common.flask.debug
 
+app.config['MAX_CONTENT_LENGTH'] = config.audio.upload.max_size
+
 
 @app.errorhandler(RadiopleException)
 def http_error_response(error):
@@ -60,7 +62,7 @@ def get_permission_class():
 
 @app.route('/', methods=['PUT'])
 @cross_origin()
-@json_response()
+@json_response(AudioResponse)
 def upload_put():
     check_permission = get_permission_class()
 
@@ -105,7 +107,7 @@ def upload_put():
             bitrate=audio.info.bitrate,
         )
 
-        return AudioResponse(audio)
+        return audio
 
     return put_upload()
 

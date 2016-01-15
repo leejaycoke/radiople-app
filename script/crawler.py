@@ -25,6 +25,7 @@ from radiople.service.sb_episode import service as sb_episode_service
 from radiople.service.user_broadcast import service as user_broadcast_service
 from radiople.service.setting import service as setting_service
 
+ACCESS_TOKEN = "urA1ioj1T2UqjyZWYKP4yNhjbh5w5XvcuCTxkEkaaAQvHHVDbgIpfo0IBtGdj-4_5Ll48LoCj_QmvTgG1Gm_wztrEQQbDtNRiK2BvZbHrA73xtbjbY8JqOlp_dBSobwWxZY="
 
 PC_HEADER = {
     'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
@@ -38,16 +39,6 @@ FEED_URL_PATTERN = re.compile(
     r'"(http:\/\/pod\.ssenhosting\.com\/rss\/.+\/?.+\.xml?)"')
 
 CHANNEL_URL = "http://m.podbbang.com/ch/{channel_id}"
-
-
-def get_audio_access_token(user_id):
-    access_token, _ = audio_token_service.issue(user_id=user_id)
-    return access_token
-
-
-def get_image_access_token():
-    access_token, _ = image_token_service.issue()
-    return access_token
 
 
 def create_podbbang(channel_id):
@@ -86,7 +77,7 @@ def parse(content):
     rss = content.get('rss')
     channel = rss.get('channel')
 
-    return Broadcast(channel).data
+    return Broadcast().dump(channel).data
 
 
 def get_feed(url):
@@ -186,9 +177,7 @@ def run(args):
     broadcast_id = broadcast.id
     user_id = user.id
 
-    data.get('episodes').reverse()
-
-    for episode in data.get('episodes')[:3]:
+    for episode in data.get('episodes')[:25]:
         if exists_episode(broadcast_id, episode['title'], episode['air_date']):
             continue
         create_episode(broadcast, user_id, broadcast_id, episode)
@@ -205,9 +194,11 @@ def upload_audio(user_id, audio, is_url=False):
         audio = download_audio(audio)
 
     url = config.audio.server.url
-    access_token = get_audio_access_token(user_id)
     response = requests.put(url,
-                            data={'access_token': access_token},
+                            params={
+                                'service': 'api',
+                                'access_token': ACCESS_TOKEN
+                            },
                             files={'file': audio})
 
     return response.json().get('id')
@@ -224,10 +215,12 @@ def upload_image(image, is_url=False):
         image = download_image(image)
 
     url = config.image.server.url
-    access_token = get_image_access_token()
     response = requests.put(
         url,
-        data={'access_token': access_token},
+        params={
+            'service': 'api',
+            'access_token': ACCESS_TOKEN
+        },
         files={'file': image}
     )
 

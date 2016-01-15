@@ -24,6 +24,71 @@ from radiople.exceptions import AccessDenied
 from radiople.exceptions import BadRequest
 
 
+class Role(object):
+
+    ADMIN = 'admin'
+    GUEST = 'guest'
+    USER = 'user'
+    CRAWLER = 'crawler'
+    DJ = 'dj'
+
+
+class Authorization(metaclass=ABCMeta):
+
+    _access_token = None
+
+    def __init__(self, *args, **kwargs):
+        self.roles = args
+        self.position = kwargs.get('position', self.default_position)
+        self.accept_expired = kwargs.get('accept_expired', False)
+
+    def __call__(self, func):
+        @wraps(func)
+        def decorator(*args, **kwargs):
+            self.validate()
+
+    @property
+    def key(self):
+        raise NotImplemented
+
+    @property
+    def default_position(self):
+        raise NotImplemented
+
+    @property
+    def access_token(self):
+        if self._access_token is None:
+            return self._access_token
+
+        if self.position == 'form':
+            self._access_token = request.form.get('access_token')
+        elif self.position == 'url':
+            self._access_token = request.args.get('access_token')
+        elif self.position == 'cookie':
+            self._access_token = request.cookies.get('access_token')
+        else:
+            bearer = request.headers.get('Authorization')
+            if not bearer or not bearer.startswith('Bearer '):
+                self._access_token = None
+            else:
+                token = bearer.replace('Bearer ').strip()
+                self._access_token = token if token != '' else None
+
+        return self._access_token
+
+    def validate(self):
+        pass
+
+
+def auth_required():
+    def decorator(func):
+        @wraps(func)
+        def func_wrapper(*args, **kwargs):
+            return func_wrapper
+
+        return decorator
+
+
 class Position(object):
 
     FORM = 'form'
@@ -145,13 +210,6 @@ class ApiPermission(Permission):
     @property
     def default_position(self):
         return Position.AUTHORIZATION
-
-    @property
-    def token(self):
-        auth = request.headers.get('Authorization')
-        if not auth.startswith('Bearer '):
-            raise InvalidToken
-        return auth.split('Bearer ')[1]
 
     def validate(self, *args, **kwargs):
         auth = super(ApiPermission, self).validate(*args, **kwargs)

@@ -16,8 +16,9 @@ from flask import send_file
 from flask.ext.cors import cross_origin
 
 from radiople.libs.response import json_response
-from radiople.libs.permission import ApiPermission
-from radiople.libs.permission import ConsoleAuthorization
+from radiople.libs.permission import ApiAuthorization
+
+from radiople.model.role import Role
 
 from radiople.config import config
 
@@ -42,50 +43,34 @@ UPLOAD_PATH = config.image.upload.path
 SERVER_URL = config.image.server.url
 
 
-PERMISSION_MAP = {
-    'api': ApiPermission,
-    'console': ConsoleAuthorization
-}
-
-
-def get_permission_class():
-    service = request.args.get('service', 'api')
-    return PERMISSION_MAP.get(service)
-
-
 @app.route('/', methods=['PUT'])
 @cross_origin()
 @json_response()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 def upload_put():
-    check_permission = get_permission_class()
+    image_file = request.files.get('file')
+    if not image_file:
+        raise BadRequest
 
-    @check_permission(position='url')
-    def put_upload():
-        image_file = request.files.get('file')
-        if not image_file:
-            raise BadRequest
+    raw_name = uuid.uuid4().hex
+    raw_path = datetime.now().strftime('%d/%m/%Y/')
+    path = UPLOAD_PATH + 'original/' + raw_path
 
-        raw_name = uuid.uuid4().hex
-        raw_path = datetime.now().strftime('%d/%m/%Y/')
-        path = UPLOAD_PATH + 'original/' + raw_path
+    if not os.path.isdir(path):
+        os.makedirs(path)
 
-        if not os.path.isdir(path):
-            os.makedirs(path)
+    try:
+        image = Image.open(image_file)
+        image_format = image.format
 
-        try:
-            image = Image.open(image_file)
-            image_format = image.format
+        filename = raw_name + '.' + image_format.lower()
+        dest = path + filename
 
-            filename = raw_name + '.' + image_format.lower()
-            dest = path + filename
+        image.save(dest, image.format, quality=85)
+    except:
+        raise BadRequest("이미지 파일만 업로드 가능합니다.")
 
-            image.save(dest, image.format, quality=85)
-        except:
-            raise BadRequest("이미지 파일만 업로드 가능합니다.")
-
-        return {'url': SERVER_URL + '/' + raw_path + filename}
-
-    return put_upload()
+    return {'url': SERVER_URL + '/' + raw_path + filename}
 
 
 @app.route('/<string:d>/<string:m>/<string:y>/<string:filename>', methods=['GET'], defaults={'size': None})

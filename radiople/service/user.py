@@ -3,6 +3,7 @@
 from radiople.db import Session
 from radiople.service import Service
 
+from radiople.model.role import Role
 from radiople.model.user import User
 
 
@@ -35,7 +36,6 @@ class UserService(Service):
     def get_by_broadcast_id(self, broadcast_id):
         return Session.query(self.__model__) \
             .filter(User.broadcast_id == broadcast_id).scalar()
-
 
 class ApiUserService(UserService):
     pass

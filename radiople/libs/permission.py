@@ -8,20 +8,15 @@ from functools import wraps
 
 from flask import request
 from flask import redirect
-from flask import url_for
 
-from radiople.service.crypto import api_token_service
-from radiople.service.crypto import console_token_service
+from radiople.model.role import Role
+
+from radiople.service.crypto import access_token_service
 
 from radiople.service.user import service as user_service
-from radiople.service.user_token import service as user_token_service
-from radiople.service.broadcast import service as broadcast_service
-from radiople.service.user_broadcast import service as user_broadcast_service
 
 from radiople.exceptions import Unauthorized
-from radiople.exceptions import InvalidToken
 from radiople.exceptions import AccessDenied
-from radiople.exceptions import BadRequest
 
 
 class Position(object):
@@ -32,185 +27,164 @@ class Position(object):
     COOKIE = 'cookie'
 
 
+class Service(object):
+
+    API = 'api'
+    CONSOLE = 'console'
+    WEB = 'web'
+    ADMIN = 'admin'
+
+
 class Auth(object):
+
+    user_id = None
+    role = None
+    service = None
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def is_guest(self, **kwargs):
+        return self.role == Role.GUEST
 
-class Permission(metaclass=ABCMeta):
+    def is_user(self, **kwargs):
+        return self.role == Role.USER
 
-    _access_token = None
-    service = None
+    def is_dj(self, **kwargs):
+        return self.role == Role.DJ
+
+
+class Authorization(metaclass=ABCMeta):
 
     def __init__(self, *args, **kwargs):
-        self.args = args
-        self.kwargs = kwargs
+        if args:
+            roles = args[0] if isinstance(args[0], list) else args
+        else:
+            roles = self.default_roles
+        self.roles = set(roles) - set(kwargs.get('disallow', []))
+
+        self.position = kwargs.get('position', self.default_position)
+        self.expired_ok = kwargs.get('expired_ok', False)
+        self.required_me = kwargs.get('required_me', False)
 
     def __call__(self, func):
         @wraps(func)
         def decorator(*args, **kwargs):
             try:
-                self.before_execute(*args, **kwargs)
                 auth = self.validate(*args, **kwargs)
             except Exception as e:
-                if self.kwargs.get('guest_ok'):
-                    setattr(request, 'auth', Auth(is_guest=True))
-                else:
-                    return self.fail_execute(e)
-            else:
-                self.success_execute(auth, *args, **kwargs)
+                return self.fail_execute(e)
+
+            self.success_execute(auth)
 
             return func(*args, **kwargs)
         return decorator
 
-    @property
-    def access_token(self):
-        if self._access_token is not None:
-            return self._access_token
-
-        position = self.kwargs.get('position', self.default_position)
-
-        if position == Position.AUTHORIZATION:
-            bearer = request.headers.get('Authorization')
-            if not bearer:
-                raise Unauthorized
-
-            if not bearer.startswith('Bearer '):
-                raise Unauthorized
-
-            return bearer.split(' ')[1]
-
-        elif position == Position.URL:
-            return request.args.get('access_token')
-
-        elif position == Position.FORM:
-            return request.form.get('access_token')
-
-        else:
-            return request.cookies.get('access_token')
-
-    @abstractproperty
-    def token_service(self):
-        raise NotImplemented
-
     @abstractmethod
-    def success_execute(self, token, *args, **kwargs):
-        raise NotImplemented
-
-    @abstractproperty
-    def before_execute(self, *args, **kwargs):
-        raise NotImplemented
-
-    def validate(self, *args, **kwargs):
-        expired_ok = self.kwargs.get('expired_ok', False)
-        entries = self.token_service.extract(
-            self.access_token, expired_ok=expired_ok)
-
-        hashed = self.token_service.hash(self.access_token)
-        user_token = user_token_service.get(
-            (entries['user_id'], self.service, hashed))
-        if not user_token:
-            raise Unauthorized
-
-        if self.kwargs.get('required_me', False):
-            if 'user_id' not in entries or 'user_id' not in kwargs:
-                raise BadRequest("required_me option needs user_id parameter")
-
-            if entries['user_id'] != kwargs['user_id']:
-                raise AccessDenied
-
-        return Auth(is_guest=False, access_token=self.access_token, **entries)
+    def success_execute(self, auth):
+        pass
 
     @abstractmethod
     def fail_execute(self, e):
+        pass
+
+    def get_access_token(self):
+        if self.position == 'form':
+            return request.form.get('access_token')
+        elif self.position == 'url':
+            return request.args.get('access_token')
+        elif self.position == 'cookie':
+            return request.cookies.get('access_token')
+        else:
+            bearer = request.headers.get('Authorization')
+            if not bearer or not bearer.startswith('Bearer '):
+                return None
+
+            access_token = bearer.replace('Bearer ', '').strip()
+            return access_token if access_token != '' else None
+
+    @abstractproperty
+    def service(self):
         raise NotImplemented
 
     @abstractproperty
     def default_position(self):
         raise NotImplemented
 
+    @abstractproperty
+    def default_roles(self):
+        raise NotImplemented
 
-class ApiPermission(Permission):
+    def validate(self, *args, **kwargs):
+        access_token = self.get_access_token()
 
-    """ API 사용자의 토큰 검증 """
+        if not access_token:
+            if Role.GUEST in self.roles:
+                return Auth(role=Role.GUEST, service=self.service)
+            else:
+                raise Unauthorized
 
-    service = 'api'
+        data = access_token_service.validate(access_token, self.expired_ok)
+
+        if self.required_me and data.get('user_id') != kwargs['user_id']:
+            raise AccessDenied
+
+        if data.get('service') != self.service:
+            raise AccessDenied
+
+        user = user_service.get(data.get('user_id'))
+        if not user:
+            raise Unauthorized
+
+        if user.role not in self.roles:
+            raise AccessDenied
+
+        if user.is_block:
+            raise AccessDenied("운영자에의해 정지되었습니다.")
+
+        return Auth(role=user.role, access_token=access_token, **data)
+
+
+class ApiAuthorization(Authorization):
 
     @property
-    def token_service(self):
-        return api_token_service
+    def service(self):
+        return Service.API
 
     @property
     def default_position(self):
         return Position.AUTHORIZATION
 
     @property
-    def token(self):
-        auth = request.headers.get('Authorization')
-        if not auth.startswith('Bearer '):
-            raise InvalidToken
-        return auth.split('Bearer ')[1]
+    def default_roles(self):
+        return Role.ALL
 
-    def validate(self, *args, **kwargs):
-        auth = super(ApiPermission, self).validate(*args, **kwargs)
-
-        if not hasattr(auth, 'user_id') or not auth.user_id:
-            raise Unauthorized
-
-        user = user_service.get(auth.user_id)
-        if not user:
-            raise Unauthorized
-
-        if user.is_block:
-            raise Unauthorized("운영자에 의해 정지된 사용자입니다.")
-
-        return auth
-
-    def before_execute(self, *args, **kwargs):
-        pass
-
-    def success_execute(self, auth, *args, **kwargs):
+    def success_execute(self, auth):
         setattr(request, 'auth', auth)
 
     def fail_execute(self, e):
         raise e
 
 
-class ConsolePermission(Permission):
-
-    """ Console 사용자의 토큰 검증 """
-
-    service = 'console'
+class ConsoleAuthorization(Authorization):
 
     @property
-    def token_service(self):
-        return console_token_service
+    def service(self):
+        return Service.CONSOLE
 
     @property
     def default_position(self):
         return Position.COOKIE
 
-    def before_execute(self, *args, **kwargs):
-        pass
+    @property
+    def default_roles(self):
+        return [Role.DJ]
 
-    def success_execute(self, auth, *args, **kwargs):
+    def success_execute(self, auth):
         setattr(request, 'auth', auth)
-
-    def validate(self, *args, **kwargs):
-        auth = super(ConsolePermission, self).validate(*args, **kwargs)
-
-        if not hasattr(auth, 'user_id') or not hasattr(auth, 'broadcast_id'):
-            raise Unauthorized
-
-        if not user_broadcast_service.exists(auth.user_id, auth.broadcast_id):
-            raise Unauthorized
-
-        return auth
 
     def fail_execute(self, e):
         if request.is_xhr:
             raise e
-
-        return redirect('/user/signin.html')
+        return redirect('/auth/signin.html')

@@ -5,7 +5,8 @@ from radiople.api.controller import api_v1
 from radiople.api.common import get_paging
 from radiople.api.common import make_paging
 
-from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import ApiAuthorization
+from radiople.model.role import Role
 
 from radiople.libs.response import json_response
 
@@ -19,7 +20,7 @@ from radiople.exceptions import NotFound
 
 
 @api_v1.route('/category', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response(CategoriesResponse)
 def category_get():
     categories = category_service.get_all()
@@ -27,7 +28,7 @@ def category_get():
 
 
 @api_v1.route('/category/<int:category_id>/broadcast', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response(BroadcastListResponse)
 def category_broadcast_get(category_id):
     if not category_service.exists(category_id):

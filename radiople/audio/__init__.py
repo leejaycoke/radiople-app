@@ -17,11 +17,11 @@ from mutagen.mp3 import MP3
 
 from radiople.config import config
 from radiople.libs.response import json_response
-from radiople.libs.permission import ConsoleAuthorization
-from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import ApiAuthorization
 from radiople.libs.permission import Position
 
 from radiople.model.audio_log import Server
+from radiople.model.role import Role
 
 from radiople.service.audio import service as audio_service
 from radiople.service.audio_log import service as audio_log_service
@@ -50,20 +50,9 @@ SERVERS = config.audio.upload.servers.split(',')
 ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
 
 
-PERMISSION_MAP = {
-    'api': ApiPermission,
-    'console': ConsoleAuthorization
-}
-
-
-def get_permission_class():
-    service = request.args.get('service', 'api')
-    return PERMISSION_MAP.get(service)
-
-
 @app.route('/', methods=['PUT'])
 @cross_origin()
-@ConsoleAuthorization(position=Position.URL)
+@ApiAuthorization(Role.DJ, position=Position.URL)
 @json_response(AudioResponse)
 def upload_put():
     audio_file = request.files.get('file')
@@ -109,27 +98,22 @@ def upload_put():
 
 
 @app.route('/<string:filename>', methods=['GET'])
+@ApiAuthorization(Role.DJ, position=Position.URL)
 def audio_get(filename):
-    check_permission = get_permission_class()
+    audio = audio_service.get_by_filename(filename)
+    if not audio:
+        abort(404)
 
-    @check_permission(guest_ok=True, position='url')
-    def get_audio():
-        audio = audio_service.get_by_filename(filename)
-        if not audio:
-            abort(404)
+    user_id = 0 if request.auth.is_guest else request.auth.user_id
 
-        user_id = 0 if request.auth.is_guest else request.auth.user_id
+    audio_log_service.insert(
+        server=Server.API,
+        audio_id=audio.id,
+        user_id=user_id,
+        byte_range=get_byte_range()
+    )
 
-        audio_log_service.insert(
-            server=Server.API,
-            audio_id=audio.id,
-            user_id=user_id,
-            byte_range=get_byte_range()
-        )
-
-        return redirect_audio(audio)
-
-    return get_audio()
+    return redirect_audio(audio)
 
 
 def get_byte_range():

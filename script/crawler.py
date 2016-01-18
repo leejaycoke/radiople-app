@@ -108,7 +108,7 @@ class Crawler(object):
 
         broadcast_id = podbbang.broadcast_id
 
-        for episode in data.get('episodes')[:3]:
+        for episode in data.get('episodes'):
             if episode_service.guess_exists_episode(
                     broadcast_id, episode['title'], episode['air_date']):
                 continue
@@ -195,7 +195,7 @@ class Crawler(object):
 
     def upload_audio(self, audio, is_url=False):
         if is_url:
-            audio = download_audio(audio)
+            audio = self.download_audio(audio)
 
         url = config.audio.server.url
         response = requests.put(

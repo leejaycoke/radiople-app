@@ -19,6 +19,7 @@ from radiople.config import config
 from radiople.libs.response import json_response
 from radiople.libs.permission import ConsolePermission
 from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import Position
 
 from radiople.model.audio_log import Server
 
@@ -62,54 +63,49 @@ def get_permission_class():
 
 @app.route('/', methods=['PUT'])
 @cross_origin()
+@ConsolePermission(position=Position.URL)
 @json_response(AudioResponse)
 def upload_put():
-    check_permission = get_permission_class()
+    audio_file = request.files.get('file')
+    if not audio_file:
+        raise BadRequest
 
-    @check_permission(position='url')
-    def put_upload():
-        audio_file = request.files.get('file')
-        if not audio_file:
+    filename = uuid.uuid4().hex
+    path = random.choice(SERVERS) + datetime.now().strftime('%d/%m/%Y/')
+
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    dest = path + filename
+
+    audio_file.save(dest)
+
+    try:
+        audio = MP3(dest)
+
+        if audio.info.protected:
             raise BadRequest
+    except:
+        os.remove(dest)
+        raise BadRequest('잘못된 mp3파일입니다.')
 
-        filename = uuid.uuid4().hex
-        path = random.choice(SERVERS) + datetime.now().strftime('%d/%m/%Y/')
+    if not ALLOWED_MIMES.intersection(audio.mime):
+        os.remove(dest)
+        raise BadRequest('잘못된 형식의 mp3파일입니다.')
 
-        if not os.path.isdir(path):
-            os.makedirs(path)
+    audio = audio_service.insert(
+        filename=filename,
+        user_id=request.auth.user_id,
+        upload_filename=audio_file.filename,
+        mimes=audio.mime,
+        path=path,
+        size=os.path.getsize(dest),
+        length=audio.info.length,
+        sample_rate=audio.info.sample_rate,
+        bitrate=audio.info.bitrate,
+    )
 
-        dest = path + filename
-
-        audio_file.save(dest)
-
-        try:
-            audio = MP3(dest)
-
-            if audio.info.protected:
-                raise BadRequest
-        except:
-            os.remove(dest)
-            raise BadRequest('잘못된 mp3파일입니다.')
-
-        if not ALLOWED_MIMES.intersection(audio.mime):
-            os.remove(dest)
-            raise BadRequest('잘못된 형식의 mp3파일입니다.')
-
-        audio = audio_service.insert(
-            filename=filename,
-            user_id=request.auth.user_id,
-            upload_filename=audio_file.filename,
-            mimes=audio.mime,
-            path=path,
-            size=os.path.getsize(dest),
-            length=audio.info.length,
-            sample_rate=audio.info.sample_rate,
-            bitrate=audio.info.bitrate,
-        )
-
-        return audio
-
-    return put_upload()
+    return audio
 
 
 @app.route('/<string:filename>', methods=['GET'])

@@ -10,6 +10,9 @@ from flask import request
 from flask import redirect
 from flask import url_for
 
+from radiople.model.role import Role
+
+from radiople.service.crypto import AccessTokenService
 from radiople.service.crypto import api_token_service
 from radiople.service.crypto import console_token_service
 
@@ -24,71 +27,6 @@ from radiople.exceptions import AccessDenied
 from radiople.exceptions import BadRequest
 
 
-class Role(object):
-
-    ADMIN = 'admin'
-    GUEST = 'guest'
-    USER = 'user'
-    CRAWLER = 'crawler'
-    DJ = 'dj'
-
-
-class Authorization(metaclass=ABCMeta):
-
-    _access_token = None
-
-    def __init__(self, *args, **kwargs):
-        self.roles = args
-        self.position = kwargs.get('position', self.default_position)
-        self.accept_expired = kwargs.get('accept_expired', False)
-
-    def __call__(self, func):
-        @wraps(func)
-        def decorator(*args, **kwargs):
-            self.validate()
-
-    @property
-    def key(self):
-        raise NotImplemented
-
-    @property
-    def default_position(self):
-        raise NotImplemented
-
-    @property
-    def access_token(self):
-        if self._access_token is None:
-            return self._access_token
-
-        if self.position == 'form':
-            self._access_token = request.form.get('access_token')
-        elif self.position == 'url':
-            self._access_token = request.args.get('access_token')
-        elif self.position == 'cookie':
-            self._access_token = request.cookies.get('access_token')
-        else:
-            bearer = request.headers.get('Authorization')
-            if not bearer or not bearer.startswith('Bearer '):
-                self._access_token = None
-            else:
-                token = bearer.replace('Bearer ').strip()
-                self._access_token = token if token != '' else None
-
-        return self._access_token
-
-    def validate(self):
-        pass
-
-
-def auth_required():
-    def decorator(func):
-        @wraps(func)
-        def func_wrapper(*args, **kwargs):
-            return func_wrapper
-
-        return decorator
-
-
 class Position(object):
 
     FORM = 'form'
@@ -97,11 +35,137 @@ class Position(object):
     COOKIE = 'cookie'
 
 
+class Service(object):
+
+    API = 'api'
+    CONSOLE = 'console'
+    WEB = 'web'
+    ADMIN = 'admin'
+
+
 class Auth(object):
+
+    user_id = None
+    role = None
+    service = None
 
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    def is_guest(self, **kwargs):
+        return self.role == Role.GUEST
+
+    def is_user(self, **kwargs):
+        return self.role == Role.USER
+
+    def is_dj(self, **kwargs):
+        return self.role == Role.DJ
+
+
+class Authorization(metaclass=ABCMeta):
+
+    def __init__(self, *args, **kwargs):
+        roles = args[0] if isinstance(args[0], list) else args
+        self.roles = set(roles) - set(kwargs.get('disallow', []))
+        self.position = kwargs.get('position', self.default_position)
+        self.expired_ok = kwargs.get('expired_ok', False)
+        self.required_me = kwargs.get('required_me', False)
+
+    def __call__(self, func):
+        @wraps(func)
+        def decorator(*args, **kwargs):
+            try:
+                auth = self.validate(*args, **kwargs)
+            except Exception as e:
+                return self.fail_execute(e)
+
+            self.success_execute(auth)
+
+            return func(*args, **kwargs)
+        return decorator
+
+    @abstractmethod
+    def success_execute(self, auth):
+        pass
+
+    @abstractmethod
+    def fail_execute(self, e):
+        pass
+
+    def get_access_token(self):
+        if self.position == 'form':
+            return request.form.get('access_token')
+        elif self.position == 'url':
+            return request.args.get('access_token')
+        elif self.position == 'cookie':
+            return request.cookies.get('access_token')
+        else:
+            bearer = request.headers.get('Authorization')
+            if not bearer or not bearer.startswith('Bearer '):
+                return None
+
+            access_token = bearer.replace('Bearer ', '').strip()
+            return access_token if access_token != '' else None
+
+    @abstractproperty
+    def service(self):
+        raise NotImplemented
+
+    @abstractproperty
+    def default_position(self):
+        raise NotImplemented
+
+    def validate(self, *args, **kwargs):
+        access_token = self.get_access_token()
+
+        if not access_token:
+            if Role.GUEST in self.roles:
+                return Auth(role=Role.GUEST, service=self.service)
+            else:
+                raise Unauthorized
+
+        token_service = AccessTokenService()
+        token_service.validate(access_token, self.expired_ok)
+        data = token_service.data
+
+        if self.required_me and data.get('user_id') != kwargs['user_id']:
+            raise AccessDenied
+
+        if data.get('service') != self.service:
+            raise AccessDenied
+
+        user = user_service.get(data.get('user_id'))
+        if not user:
+            raise Unauthorized
+
+        if user.role not in self.roles:
+            raise AccessDenied
+
+        if data.get('role') != user.role:
+            raise AccessDenied
+
+        if user.is_block:
+            raise AccessDenied("운영자에의해 정지되었습니다.")
+
+        return Auth(user_id=user.id, role=user.role, service=self.service)
+
+
+class ApiAuthorization(Authorization):
+
+    @property
+    def service(self):
+        return Service.API
+
+    @property
+    def default_position(self):
+        return Position.AUTHORIZATION
+
+    def success_execute(self, auth):
+        setattr(request, 'auth', auth)
+
+    def fail_execute(self, e):
+        raise e
 
 
 class Permission(metaclass=ABCMeta):

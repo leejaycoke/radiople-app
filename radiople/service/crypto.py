@@ -56,17 +56,15 @@ class TokenService(metaclass=ABCMeta):
     def decrypt(self, token):
         try:
             return self.box.decrypt(urlsafe_b64decode(token))
-        except Exception as e:
-            print(e)
+        except:
             raise InvalidToken("잘못된 토큰입니다.")
 
-    def extract(self, token, expired_ok=False):
+    def validate(self, token, expired_ok=False):
         plaintext = self.decrypt(token)
 
         try:
             data = msgpack.unpackb(plaintext, encoding='utf-8')
-        except Exception as e:
-            print(e)
+        except:
             raise InvalidToken("잘못된 토큰입니다.")
 
         try:
@@ -77,7 +75,7 @@ class TokenService(metaclass=ABCMeta):
         if not expired_ok and self.expired(expires_at):
             raise ExpiredToken("토큰기간이 만료되었습니다.")
 
-        return data
+        self.data = data
 
     def expired(self, date):
         return date <= kst_now()
@@ -97,6 +95,18 @@ class TokenService(metaclass=ABCMeta):
     @abstractproperty
     def expire_type(self):
         raise NotImplemented
+
+
+class AccessTokenService(TokenService):
+
+    secret_key = b64decode(config.common.access_token.secret_key)
+    hash_key = b64decode(config.common.access_token.hash_key)
+    box = nacl.secret.SecretBox(secret_key)
+    expires = config.common.access_token.expires
+
+    @property
+    def expire_type(self):
+        return 'days'
 
 
 class ConsoleTokenService(TokenService):

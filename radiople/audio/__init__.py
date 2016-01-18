@@ -17,7 +17,7 @@ from mutagen.mp3 import MP3
 
 from radiople.config import config
 from radiople.libs.response import json_response
-from radiople.libs.permission import ConsolePermission
+from radiople.libs.permission import ConsoleAuthorization
 from radiople.libs.permission import ApiPermission
 from radiople.libs.permission import Position
 
@@ -52,7 +52,7 @@ ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
 
 PERMISSION_MAP = {
     'api': ApiPermission,
-    'console': ConsolePermission
+    'console': ConsoleAuthorization
 }
 
 
@@ -63,7 +63,7 @@ def get_permission_class():
 
 @app.route('/', methods=['PUT'])
 @cross_origin()
-@ConsolePermission(position=Position.URL)
+@ConsoleAuthorization(position=Position.URL)
 @json_response(AudioResponse)
 def upload_put():
     audio_file = request.files.get('file')

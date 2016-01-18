@@ -17,7 +17,7 @@ from flask.ext.cors import cross_origin
 
 from radiople.libs.response import json_response
 from radiople.libs.permission import ApiPermission
-from radiople.libs.permission import ConsolePermission
+from radiople.libs.permission import ConsoleAuthorization
 
 from radiople.config import config
 
@@ -44,7 +44,7 @@ SERVER_URL = config.image.server.url
 
 PERMISSION_MAP = {
     'api': ApiPermission,
-    'console': ConsolePermission
+    'console': ConsoleAuthorization
 }
 
 

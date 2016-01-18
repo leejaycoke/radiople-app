@@ -5,9 +5,8 @@ from flask import request
 from radiople.api.common import get_paging
 from radiople.api.common import make_paging
 
-from radiople.libs.permission import ApiPermission
 from radiople.libs.permission import ApiAuthorization
-from radiople.libs.permission import Role
+from radiople.model.role import Role
 from radiople.libs.response import json_response
 
 from radiople.model.report import ContentType
@@ -54,7 +53,7 @@ def broadcast_get(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/episode', methods=['GET'])
-@ApiPermission(Role.GUEST, Role.USER, Role.DJ)
+@ApiAuthorization(Role.GUEST, Role.USER, Role.DJ)
 @json_response(EpisodeListResponse)
 def broadcast_episode_get(broadcast_id):
     if not broadcast_service.exists(broadcast_id):

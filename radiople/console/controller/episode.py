@@ -15,7 +15,7 @@ from radiople.console.response.episode import EpisodeListResponse
 
 from radiople.libs.response import view_response
 from radiople.libs.response import json_response
-from radiople.libs.permission import ConsolePermission
+from radiople.libs.permission import ConsoleAuthorization
 
 from radiople.service.episode import console_service as episode_service
 from radiople.service.sb_episode import console_service as sb_episode_service
@@ -27,29 +27,29 @@ from radiople.exceptions import AccessDenied
 
 
 @bp_episode.route('/list.html', methods=['GET'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @view_response('episode/list.html')
 def list_html():
     return
 
 
 @bp_episode.route('/create.html', methods=['GET'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @view_response('episode/create.html')
 def create_html():
     return
 
 
 @bp_episode.route('/edit.html', methods=['GET'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @view_response('episode/edit.html')
 def edit_html():
     return {'episode_id': request.args.get('episode_id')}
 
 
 @bp_episode.route('s', methods=['GET'])
-@ConsolePermission()
-@json_response()
+@ConsoleAuthorization()
+@json_response(EpisodeListResponse)
 def get_episode_list():
     paging = get_paging()
     item, total_count = episode_service.get_list(
@@ -57,25 +57,23 @@ def get_episode_list():
 
     response = make_paging(item, total_count, paging.page)
 
-    response = EpisodeListResponse(response)
-
     return response
 
 
 @bp_episode.route('/<int:episode_id>', methods=['GET'])
-@ConsolePermission()
-@json_response()
+@ConsoleAuthorization()
+@json_response(EpisodeResponse)
 def get_episode(episode_id):
     episode = episode_service.get(episode_id)
 
     if episode.broadcast_id != request.auth.broadcast_id:
         raise AccessDenied
 
-    return EpisodeResponse(episode)
+    return episode
 
 
 @bp_episode.route('', methods=['POST'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @json_response()
 def post():
     form = EpisodeCreateForm(request.form)
@@ -108,7 +106,7 @@ def post():
 
 
 @bp_episode.route('/<int:episode_id>', methods=['PUT'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @json_response()
 def edit(episode_id):
     current = episode_service.get(episode_id)
@@ -147,7 +145,7 @@ def edit(episode_id):
 
 
 @bp_episode.route('/<int:episode_id>', methods=['DELETE'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @json_response()
 def delete(episode_id):
     current = episode_service.get(episode_id, with_entities=True)

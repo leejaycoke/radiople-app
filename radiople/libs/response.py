@@ -30,7 +30,7 @@ def json_response(serializer=dict):
             if isinstance(serializer, dict):
                 return jsonify(data)
 
-            return jsonify({})
+            return data
 
         return func_wrapper
     return decorator

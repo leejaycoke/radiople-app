@@ -5,7 +5,8 @@ from radiople.api.controller import api_v1
 from flask import request
 
 from radiople.libs.response import json_response
-from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import ApiAuthorization
+from radiople.model.role import Role
 
 from radiople.service.episode import api_service as episode_service
 from radiople.service.sb_episode import api_service as sb_episode_service
@@ -20,7 +21,7 @@ from radiople.exceptions import BadRequest
 
 
 @api_v1.route('/episode/<int:episode_id>', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response(EpisodeResponse)
 def episode_get(episode_id):
     if not episode_service.exists(episode_id):
@@ -33,7 +34,7 @@ def episode_get(episode_id):
 
 @api_v1.route('/episode/<int:episode_id>/next', methods=['GET'], defaults={'switch': 'next'})
 @api_v1.route('/episode/<int:episode_id>/prev', methods=['GET'], defaults={'switch': 'prev'})
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response(EpisodeResponse)
 def episode_switch_get(episode_id, switch):
     if not episode_service.exists(episode_id):
@@ -52,7 +53,7 @@ def episode_switch_get(episode_id, switch):
 
 
 @api_v1.route('/episode/<int:episode_id>/like', methods=['PUT'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def episode_like_put(episode_id):
     if not episode_service.exists(episode_id):
@@ -69,7 +70,7 @@ def episode_like_put(episode_id):
 
 
 @api_v1.route('/episode/<int:episode_id>/like', methods=['DELETE'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def episode_like_delete(episode_id):
     if not episode_service.exists(episode_id):
@@ -86,7 +87,7 @@ def episode_like_delete(episode_id):
 
 
 @api_v1.route('/episode/<int:episode_id>/history', methods=['PUT'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def episode_history_put(episode_id):
     if not episode_service.exists(episode_id):

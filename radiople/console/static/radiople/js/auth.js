@@ -3,7 +3,7 @@ app.controller('SigninController', function($scope, $cookies, $location, request
         $scope.isSigning = true;
         $scope.error = null;
 
-        requestService.post('/user/signin', $scope.user, {
+        requestService.post('/auth/signin', $scope.user, {
             success: function(response) {
                 location.replace('/dashboard/index.html');
             },

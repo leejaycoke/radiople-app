@@ -75,7 +75,7 @@ class TokenService(metaclass=ABCMeta):
         if not expired_ok and self.expired(expires_at):
             raise ExpiredToken("토큰기간이 만료되었습니다.")
 
-        self.data = data
+        return data
 
     def expired(self, date):
         return date <= kst_now()
@@ -103,30 +103,6 @@ class AccessTokenService(TokenService):
     hash_key = b64decode(config.common.access_token.hash_key)
     box = nacl.secret.SecretBox(secret_key)
     expires = config.common.access_token.expires
-
-    @property
-    def expire_type(self):
-        return 'days'
-
-
-class ConsoleTokenService(TokenService):
-
-    secret_key = b64decode(config.console.access_token.secret_key)
-    hash_key = b64decode(config.console.access_token.hash_key)
-    box = nacl.secret.SecretBox(secret_key)
-    expires = config.console.access_token.expires
-
-    @property
-    def expire_type(self):
-        return 'days'
-
-
-class ApiTokenService(TokenService):
-
-    secret_key = b64decode(config.api.access_token.secret_key)
-    hash_key = b64decode(config.api.access_token.hash_key)
-    box = nacl.secret.SecretBox(secret_key)
-    expires = config.api.access_token.expires
 
     @property
     def expire_type(self):
@@ -179,7 +155,6 @@ class PasswordService(object):
 
 
 password_service = PasswordService()
-api_token_service = ApiTokenService()
-console_token_service = ConsoleTokenService()
+access_token_service = AccessTokenService()
 find_password_token_service = FindPasswordTokenService()
 email_validation_token_service = EmailValidationTokenService()

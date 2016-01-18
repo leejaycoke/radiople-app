@@ -21,6 +21,10 @@ class UserBroadcastService(Service):
         return Session.query(self.__model__) \
             .filter(UserBroadcast.user_id == user_id).scalar()
 
+    def get_by_broadcast_id(self, broadcast_id):
+        return Session.query(self.__model__) \
+            .filter(UserBroadcast.broadcast_id == broadcast_id).scalar()
+
     def exists_by_user_id(self, user_id):
         return Session.query(
             Session.query(self.__model__)

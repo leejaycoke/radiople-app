@@ -52,7 +52,7 @@ ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
 
 @app.route('/', methods=['PUT'])
 @cross_origin()
-@ApiAuthorization(Role.DJ, position=Position.URL)
+@ApiAuthorization(Role.DJ, Role.ADMIN, position=Position.URL)
 @json_response(AudioResponse)
 def upload_put():
     audio_file = request.files.get('file')
@@ -98,7 +98,7 @@ def upload_put():
 
 
 @app.route('/<string:filename>', methods=['GET'])
-@ApiAuthorization(Role.DJ, position=Position.URL)
+@ApiAuthorization(Role.ALL, position=Position.URL)
 def audio_get(filename):
     audio = audio_service.get_by_filename(filename)
     if not audio:

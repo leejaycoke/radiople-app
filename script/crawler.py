@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import uuid
 import re
 import requests
@@ -119,7 +120,7 @@ class Crawler(object):
         )
 
     def create_broadcast(self, data):
-        image = self.upload_image(data['image_url'], is_url=True) if data[
+        image = self.upload_image(data['image_url']) if data[
             'image_url'] else None
 
         broadcast = broadcast_service.insert(
@@ -177,39 +178,53 @@ class Crawler(object):
         return user_broadcast_service.insert(
             user_id=user_id, broadcast_id=broadcast_id)
 
-    def download_image(self, image_url):
-        image = requests.get(image_url, headers=PC_HEADER,
-                             allow_redirects=True, stream=True)
-        return image.raw
+    def download_file(self, url):
+        filename = "/tmp/%s.mp3" % uuid.uuid4().hex
 
-    def upload_image(self, image, is_url=False):
-        if is_url:
-            image = self.download_image(image)
+        with open(filename, "wb") as f:
+            print("> Downloading : %s" % filename)
+            response = requests.get(
+                url, headers=PC_HEADER, allow_redirects=True, stream=True)
+            content_length = int(response.headers.get('Content-Length', 0))
+
+            dl = 0
+
+            for data in response.iter_content(chunk_size=1024):
+                dl += len(data)
+                f.write(data)
+                done = int(50 * dl / content_length)
+                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50 - done)))
+                sys.stdout.flush()
+
+        return filename
+
+    def upload_image(self, url):
+        filename = self.download_file(url)
 
         url = config.image.server.url
         response = requests.put(
             url,
             params={'access_token': self.access_token},
-            files={'file': image}
+            files={'file': open(filename, 'rb')}
         )
+
+        if not response.ok:
+            raise Exception(response.json().get('display_message'))
 
         return response.json().get('url')
 
-    def download_audio(self, audio_url):
-        audio = requests.get(audio_url, headers=PC_HEADER,
-                             allow_redirects=True, stream=True)
-        return audio.raw
-
-    def upload_audio(self, audio, is_url=False):
-        if is_url:
-            audio = self.download_audio(audio)
+    def upload_audio(self, url):
+        filename = self.download_file(url)
 
         url = config.audio.server.url
         response = requests.put(
             url,
             params={'access_token': self.access_token},
-            files={'file': audio}
+            files={'file': open(filename, 'rb')}
         )
+
+        if not response.ok:
+            raise Exception(response.json().get('display_message'))
 
         return response.json().get('id')
 
@@ -218,7 +233,7 @@ class Crawler(object):
             user_id=user_id, service=Service.API)
 
     def create_episode(self, broadcast_id, episode):
-        audio_id = self.upload_audio(episode.get('audio_url'), is_url=True)
+        audio_id = self.upload_audio(episode.get('audio_url'))
         episode = episode_service.insert(
             broadcast_id=broadcast_id,
             audio_id=audio_id,

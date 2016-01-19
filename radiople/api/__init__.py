@@ -23,8 +23,7 @@ app.debug = config.common.flask.debug
 
 if app.debug:
     import sqltap.wsgi
-
-app.wsgi_app = sqltap.wsgi.SQLTapMiddleware(app.wsgi_app)
+    app.wsgi_app = sqltap.wsgi.SQLTapMiddleware(app.wsgi_app)
 
 cache = Cache(app, config={
     'CACHE_TYPE': 'redis',

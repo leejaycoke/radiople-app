@@ -139,6 +139,7 @@ class Crawler(object):
     def get_feed_url(self):
         try:
             html = requests.get(self.channel_url).content
+            print(">>>>>>>>>>>>>>>>>>>>>>>", type(html))
         except:
             raise Exception("failed to networking: ", self.channel_url)
 

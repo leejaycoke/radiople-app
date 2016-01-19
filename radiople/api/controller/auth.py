@@ -6,13 +6,14 @@ from flask import request
 
 from radiople.libs.response import json_response
 from radiople.libs.permission import ApiAuthorization
+from radiople.libs.permission import Service
 
 from radiople.model.role import Role
 from radiople.model.user_token import UserTokenUsage
 from radiople.model.email_auth import EmailAuthUsage
 
 from radiople.service.crypto import password_service
-from radiople.service.crypto import api_token_service
+from radiople.service.crypto import access_token_service
 from radiople.service.crypto import find_password_token_service
 from radiople.service.crypto import email_validation_token_service
 from radiople.service.user import api_service as user_service
@@ -52,7 +53,8 @@ def auth_register_post():
     user_auth_service.insert(
         user_id=user.id, password=hashed_password, salt=salt)
 
-    access_token, expires_at, hashed = api_token_service.issue(user_id=user.id)
+    access_token, expires_at, hashed = access_token_service.issue(
+        user_id=user.id, service=Service.API)
 
     user_token_service.insert(usage=UserTokenUsage.API, user_id=user.id,
                               token=hashed, expires_at=expires_at)
@@ -89,8 +91,8 @@ def auth_login_post():
 
     user_id = user_auth.user_id
 
-    access_token, expires_at, hashed = api_token_service.issue(
-        user_id=user_auth.user_id)
+    access_token, expires_at, hashed = access_token_service.issue(
+        user_id=user_auth.user_id, service=Service.API)
 
     user_token_service.insert(usage=UserTokenUsage.API, user_id=user_id,
                               token=hashed, expires_at=expires_at)
@@ -150,8 +152,8 @@ def auth_find_password_post():
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], expired_ok=True)
 @json_response(UserSessionResponse)
 def auth_refresh_access_token_get():
-    access_token, expires_at, hashed = api_token_service.issue(
-        user_id=request.auth.user_id)
+    access_token, expires_at, hashed = access_token_service.issue(
+        user_id=request.auth.user_id, service=Service.API)
 
     user = user_service.get(request.auth.user_id)
 

@@ -20,11 +20,9 @@ from radiople.libs.response import json_response
 from radiople.libs.permission import ApiAuthorization
 from radiople.libs.permission import Position
 
-from radiople.model.audio_log import Server
 from radiople.model.role import Role
 
 from radiople.service.audio import service as audio_service
-from radiople.service.audio_log import service as audio_log_service
 
 from radiople.audio.response.audio import AudioResponse
 
@@ -104,24 +102,7 @@ def audio_get(filename):
     if not audio:
         abort(404)
 
-    user_id = 0 if request.auth.is_guest else request.auth.user_id
-
-    audio_log_service.insert(
-        server=Server.API,
-        audio_id=audio.id,
-        user_id=user_id,
-        byte_range=get_byte_range()
-    )
-
     return redirect_audio(audio)
-
-
-def get_byte_range():
-    byte_range = request.headers.get('Range')
-    try:
-        return byte_range.replace('bytes=', '')
-    except:
-        return '0-'
 
 
 def redirect_audio(audio):

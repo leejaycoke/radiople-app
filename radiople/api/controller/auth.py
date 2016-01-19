@@ -5,8 +5,9 @@ from radiople.api.controller import api_auth
 from flask import request
 
 from radiople.libs.response import json_response
-from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import ApiAuthorization
 
+from radiople.model.role import Role
 from radiople.model.user_token import UserTokenUsage
 from radiople.model.email_auth import EmailAuthUsage
 
@@ -106,7 +107,7 @@ def auth_login_post():
 
 
 @api_auth.route('/email-validation', methods=['POST'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def auth_email_validation_post():
     user = user_service.get(request.auth.user_id)
@@ -146,7 +147,7 @@ def auth_find_password_post():
 
 
 @api_auth.route('/refresh-access-token', methods=['GET'])
-@ApiPermission(expired_ok=True)
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], expired_ok=True)
 @json_response(UserSessionResponse)
 def auth_refresh_access_token_get():
     access_token, expires_at, hashed = api_token_service.issue(

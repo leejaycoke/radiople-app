@@ -56,17 +56,15 @@ class TokenService(metaclass=ABCMeta):
     def decrypt(self, token):
         try:
             return self.box.decrypt(urlsafe_b64decode(token))
-        except Exception as e:
-            print(e)
+        except:
             raise InvalidToken("잘못된 토큰입니다.")
 
-    def extract(self, token, expired_ok=False):
+    def validate(self, token, expired_ok=False):
         plaintext = self.decrypt(token)
 
         try:
             data = msgpack.unpackb(plaintext, encoding='utf-8')
-        except Exception as e:
-            print(e)
+        except:
             raise InvalidToken("잘못된 토큰입니다.")
 
         try:
@@ -99,24 +97,12 @@ class TokenService(metaclass=ABCMeta):
         raise NotImplemented
 
 
-class ConsoleTokenService(TokenService):
+class AccessTokenService(TokenService):
 
-    secret_key = b64decode(config.console.access_token.secret_key)
-    hash_key = b64decode(config.console.access_token.hash_key)
+    secret_key = b64decode(config.common.access_token.secret_key)
+    hash_key = b64decode(config.common.access_token.hash_key)
     box = nacl.secret.SecretBox(secret_key)
-    expires = config.console.access_token.expires
-
-    @property
-    def expire_type(self):
-        return 'days'
-
-
-class ApiTokenService(TokenService):
-
-    secret_key = b64decode(config.api.access_token.secret_key)
-    hash_key = b64decode(config.api.access_token.hash_key)
-    box = nacl.secret.SecretBox(secret_key)
-    expires = config.api.access_token.expires
+    expires = config.common.access_token.expires
 
     @property
     def expire_type(self):
@@ -169,7 +155,6 @@ class PasswordService(object):
 
 
 password_service = PasswordService()
-api_token_service = ApiTokenService()
-console_token_service = ConsoleTokenService()
+access_token_service = AccessTokenService()
 find_password_token_service = FindPasswordTokenService()
 email_validation_token_service = EmailValidationTokenService()

@@ -5,7 +5,8 @@ from flask import request
 from radiople.api.common import get_paging
 from radiople.api.common import make_paging
 
-from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import ApiAuthorization
+from radiople.model.role import Role
 from radiople.libs.response import json_response
 
 from radiople.model.report import ContentType
@@ -35,14 +36,14 @@ from radiople.exceptions import Unauthorized
 
 
 @api_v1.route('/broadcast', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response(serializer=BroadcastListResponse)
 def broadcast_list_get():
     return
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response(serializer=BroadcastResponse)
 def broadcast_get(broadcast_id):
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
@@ -52,7 +53,7 @@ def broadcast_get(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/episode', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.GUEST, Role.USER, Role.DJ)
 @json_response(EpisodeListResponse)
 def broadcast_episode_get(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
@@ -68,7 +69,7 @@ def broadcast_episode_get(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/subscription', methods=['PUT'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def subscription_put(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
@@ -90,7 +91,7 @@ def subscription_put(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/subscription', methods=['DELETE'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def subscription_delete(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
@@ -111,7 +112,7 @@ def subscription_delete(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment', methods=['GET'])
-@ApiPermission(guest_ok=True)
+@ApiAuthorization(Role.ALL)
 @json_response()
 def comment_get(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
@@ -123,7 +124,7 @@ def comment_get(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment/<int:comment_id>/report', methods=['PUT'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def comment_report_put(broadcast_id, comment_id):
     if not broadcast_service.exists(broadcast_id):
@@ -138,7 +139,7 @@ def comment_report_put(broadcast_id, comment_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment', methods=['POST'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def comment_post(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
@@ -160,7 +161,7 @@ def comment_post(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment/<int:comment_id>', methods=['DELETE'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def comment_delete(broadcast_id, comment_id):
     if not broadcast_service.exists(broadcast_id):
@@ -185,7 +186,7 @@ POINT_RANGE = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/rating', methods=['PUT'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def rating_put(broadcast_id):
     point = request.form.get('point')
@@ -224,7 +225,7 @@ def rating_put(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/rating', methods=['DELETE'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
 @json_response()
 def rating_delete(broadcast_id):
     if not broadcast_service.exists(broadcast_id):

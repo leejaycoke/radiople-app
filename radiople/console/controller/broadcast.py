@@ -6,7 +6,7 @@ from radiople.console.controller import bp_broadcast
 
 from radiople.exceptions import BadRequest
 
-from radiople.libs.permission import ConsolePermission
+from radiople.libs.permission import ConsoleAuthorization
 from radiople.libs.response import view_response
 from radiople.libs.response import json_response
 
@@ -18,22 +18,22 @@ from radiople.console.response.broadcast import BroadcastResponse
 
 
 @bp_broadcast.route('/edit.html', methods=['GET'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @view_response('broadcast/edit.html')
 def edit_html():
     return
 
 
 @bp_broadcast.route('', methods=['GET'])
-@ConsolePermission()
-@json_response()
+@ConsoleAuthorization()
+@json_response(BroadcastResponse)
 def json():
     broadcast = broadcast_service.get(request.auth.broadcast_id)
-    return BroadcastResponse(broadcast)
+    return broadcast
 
 
 @bp_broadcast.route('', methods=['PUT'])
-@ConsolePermission()
+@ConsoleAuthorization()
 @json_response()
 def edit():
     form = BroadcastCreateForm(request.form)

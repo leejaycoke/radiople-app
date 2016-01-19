@@ -27,10 +27,10 @@ def json_response(serializer=dict):
                 result = serializer.dump(data)
                 return jsonify(result.data)
 
-            if isinstance(serializer, dict):
+            if isinstance(data, dict):
                 return jsonify(data)
 
-            return jsonify({})
+            return data
 
         return func_wrapper
     return decorator

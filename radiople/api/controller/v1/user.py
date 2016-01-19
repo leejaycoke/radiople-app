@@ -7,13 +7,14 @@ from flask import request
 from radiople.worker import email as email_worker
 
 from radiople.libs.response import json_response
-from radiople.libs.permission import ApiPermission
+from radiople.libs.permission import ApiAuthorization
 
 from radiople.api.common import get_paging
 from radiople.api.common import make_paging
 from radiople.api.common import extract_user_agent
 
 from radiople.model.user import UserInfo
+from radiople.model.role import Role
 
 from radiople.service.crypto import email_validation_token_service
 from radiople.service.user import api_service as user_service
@@ -45,7 +46,7 @@ from radiople.exceptions import Conflict
 
 
 @api_v1.route('/user/<int:user_id>', methods=['GET'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL)
 @json_response(UserResponse)
 def user_get(user_id=None):
     user = user_service.get(user_id)
@@ -58,7 +59,7 @@ def user_get(user_id=None):
 
 
 @api_v1.route('/user/<int:user_id>/<string:info>', methods=['PUT'])
-@ApiPermission(required_me=True)
+@ApiAuthorization(Role.ALL)
 @json_response()
 def user_put(user_id=None, info=UserInfo.PASSWORD):
     if info not in UserInfo.ALL:
@@ -123,7 +124,7 @@ def user_put(user_id=None, info=UserInfo.PASSWORD):
 
 
 @api_v1.route('/user/<int:user_id>/device', methods=['PUT'])
-@ApiPermission(required_me=True)
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response()
 def user_device_put(user_id):
     user_agent = extract_user_agent()
@@ -149,30 +150,24 @@ def user_device_put(user_id):
 
 
 @api_v1.route('/user/<int:user_id>/subscription', methods=['GET'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(BroadcastListResponse)
 def user_subscription_get(user_id):
-    if user_id != request.auth.user_id:
-        raise AccessDenied
-
     paging = get_paging()
     item = subscription_service.get_list_by_user_id(user_id, paging)
     return item
 
 
 @api_v1.route('/user/<int:user_id>/setting', methods=['GET'])
-@ApiPermission()
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(SettingResponse)
 def user_setting_get(user_id):
-    if request.auth.user_id != user_id:
-        raise Unauthorized
-
     setting = setting_service.get(user_id)
     return setting
 
 
 @api_v1.route('/user/<int:user_id>/setting', methods=['PUT'])
-@ApiPermission(required_me=True)
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response()
 def user_setting_put(user_id):
     data = {}
@@ -192,7 +187,7 @@ def user_setting_put(user_id):
 
 
 @api_v1.route('/user/<int:user_id>/notification', methods=['GET'])
-@ApiPermission(required_me=True)
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(NotificationListResponse)
 def user_notification_get(user_id):
     paging = get_paging()
@@ -205,7 +200,7 @@ def user_notification_get(user_id):
 
 
 @api_v1.route('/user/<int:user_id>/history', methods=['GET'])
-@ApiPermission(required_me=True)
+@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(EpisodeListResponse)
 def episode_history_get(user_id):
     paging = get_paging()

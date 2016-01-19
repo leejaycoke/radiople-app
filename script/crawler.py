@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import sys
 import uuid
 import re
 import requests
 import xmltodict
-import feedparser
 
 from datetime import datetime
 
@@ -22,7 +20,6 @@ from radiople.service.crypto import access_token_service
 from radiople.service.podbbang import service as podbbang_service
 from radiople.service.user import service as user_service
 from radiople.service.sb_user import service as sb_user_service
-from radiople.service.user_auth import service as user_auth_service
 from radiople.service.broadcast import service as broadcast_service
 from radiople.service.sb_broadcast import service as sb_broadcast_service
 from radiople.service.episode import service as episode_service
@@ -160,11 +157,21 @@ class Crawler(object):
         return Broadcast().dump(channel).data
 
     def create_user(self):
-        return user_service.insert(
+        user = user_service.insert(
             email=uuid.uuid4().hex + "@radiople.com",
             nickname=uuid.uuid4().hex,
             role=Role.DJ
         )
+
+        sb_user_service.insert(
+            user_id=user.id
+        )
+
+        setting_service.insert(
+            user_id=user.id
+        )
+
+        return user
 
     def create_user_broadcast(self, user_id, broadcast_id):
         return user_broadcast_service.insert(

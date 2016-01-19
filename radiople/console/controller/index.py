@@ -8,4 +8,4 @@ from radiople.console.controller import bp_index
 
 @bp_index.route('/', methods=['GET'])
 def index_get():
-    return redirect(url_for('bp_user.signin_html'))
+    return redirect(url_for('bp_auth.signin_html'))

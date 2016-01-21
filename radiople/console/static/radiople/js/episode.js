@@ -62,28 +62,29 @@ app.controller('CreateController', function($scope, $filter, $httpParamSerialize
         $scope.isUploading = true;
         $scope.audioErrorMessage = null;
 
-        var url = url + "?" + $httpParamSerializerJQLike({
-            service: 'console',
-            access_token: cookieService.get('access_token')
-        });
+        var url = url + "/generate-temp-url";
 
-        requestService.upload('PUT', url, {
-            file: $scope.audioFile
-        }, {
+        requestService.get(url, {access_token: cookieService.get('access_token')}, {
             success: function(audio) {
-                $scope.episode.audio = audio;
-                $scope.episode.audio_id = audio.id;
+                requestService.upload('PUT', audio.temp_url, {'file': $scope.audioFile}, {
+                    success: function(response) {
+                        alert(response);
+                    },
+                    error: function(error) {
+                        alert(error.display_message);
+                    },
+                    progress: function(p) {
+                        $scope.progress = p;
+                    },
+                    then: function() {
+                        $scope.progress = 0;
+                        $scope.isUploading = false;
+                    }
+                });
             },
             error: function(error) {
                 alert(error.display_message);
             },
-            progress: function(p) {
-                $scope.progress = p;
-            },
-            then: function(audio) {
-                $scope.progress = 0;
-                $scope.isUploading = false;
-            }
         });
     }
 

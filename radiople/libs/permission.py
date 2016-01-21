@@ -33,6 +33,7 @@ class Service(object):
     CONSOLE = 'console'
     WEB = 'web'
     ADMIN = 'admin'
+    AUDIO = 'audio'
 
 
 class Auth(object):
@@ -109,6 +110,10 @@ class Authorization(metaclass=ABCMeta):
         raise NotImplemented
 
     @abstractproperty
+    def allowed_services(self):
+        raise NotImplemented
+
+    @abstractproperty
     def default_position(self):
         raise NotImplemented
 
@@ -130,7 +135,7 @@ class Authorization(metaclass=ABCMeta):
         if self.required_me and data.get('user_id') != kwargs['user_id']:
             raise AccessDenied
 
-        if data.get('service') != self.service:
+        if data.get('service') not in self.allowed_services:
             raise AccessDenied
 
         user = user_service.get(data.get('user_id'))
@@ -151,6 +156,10 @@ class ApiAuthorization(Authorization):
     @property
     def service(self):
         return Service.API
+
+    @property
+    def allowed_services(self):
+        return [self.service]
 
     @property
     def default_position(self):
@@ -174,6 +183,10 @@ class ConsoleAuthorization(Authorization):
         return Service.CONSOLE
 
     @property
+    def allowed_services(self):
+        return [self.service]
+
+    @property
     def default_position(self):
         return Position.COOKIE
 
@@ -188,3 +201,28 @@ class ConsoleAuthorization(Authorization):
         if request.is_xhr:
             raise e
         return redirect('/auth/signin.html')
+
+
+class AudioAuthorization(Authorization):
+
+    @property
+    def service(self):
+        return Service.AUDIO
+
+    @property
+    def allowed_services(self):
+        return [self.service, Service.CONSOLE]
+
+    @property
+    def default_position(self):
+        return Position.URL
+
+    @property
+    def default_roles(self):
+        return [Role.DJ]
+
+    def success_execute(self, auth):
+        setattr(request, 'auth', auth)
+
+    def fail_execute(self, e):
+        raise e

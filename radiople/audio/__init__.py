@@ -17,12 +17,14 @@ from mutagen.mp3 import MP3
 
 from radiople.config import config
 from radiople.libs.response import json_response
+from radiople.libs.permission import AudioAuthorization
 from radiople.libs.permission import ApiAuthorization
 from radiople.libs.permission import Position
 
 from radiople.model.role import Role
 
 from radiople.service.audio import service as audio_service
+from radiople.service.storage import Service as StorageService
 
 from radiople.audio.response.audio import AudioResponse
 
@@ -46,6 +48,21 @@ def http_error_response(error):
 SERVERS = config.audio.upload.servers.split(',')
 
 ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
+
+
+@app.route('/generate-temp-url', methods=['GET'])
+@cross_origin()
+@AudioAuthorization(Role.DJ, Role.ADMIN, position=Position.URL)
+@json_response()
+def get_temp_url():
+    filename = uuid.uuid4().hex + '.mp3'
+    storage_service = StorageService(config.common.storage.audio_container)
+    temp_url = storage_service.generate_temp_url(filename, method='PUT')
+
+    return {
+        'filename': filename,
+        'temp_url': temp_url
+    }
 
 
 @app.route('/', methods=['PUT'])

@@ -24,3 +24,4 @@ Flask-Cache==0.13.1
 mandrill==1.0.57
 sqltap==0.3.10
 Flask-Cors==2.1.2
+uWSGI==2.0.12

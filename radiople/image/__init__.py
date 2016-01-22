@@ -16,7 +16,7 @@ from flask import send_file
 from flask.ext.cors import cross_origin
 
 from radiople.libs.response import json_response
-from radiople.libs.permission import ApiAuthorization
+from radiople.libs.permission import ImageAuthorization
 from radiople.libs.permission import Position
 
 from radiople.model.role import Role
@@ -47,7 +47,7 @@ SERVER_URL = config.image.server.url
 @app.route('/', methods=['PUT'])
 @cross_origin()
 @json_response(dict)
-@ApiAuthorization(Role.ALL, disallow=[Role.GUEST], position=Position.URL)
+@ImageAuthorization(Role.ALL, disallow=[Role.GUEST], position=Position.URL)
 def upload_put():
     image_file = request.files.get('file')
     if not image_file:

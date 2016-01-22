@@ -25,3 +25,5 @@ mandrill==1.0.57
 sqltap==0.3.10
 Flask-Cors==2.1.2
 uWSGI==2.0.12
+python-swiftclient==2.7.0
+python-keystoneclient==2.1.1

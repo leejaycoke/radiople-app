@@ -27,7 +27,6 @@ class Audio(Base, TimeStampMixin):
                 server_default=AUDIO_ID_SEQ.next_value())
     filename = Column(String, nullable=False, unique=True)
     upload_filename = Column(String, nullable=False)
-    path = Column(String, nullable=False)
     length = Column(DOUBLE_PRECISION, nullable=False)
     size = Column(Integer, nullable=False)
     sample_rate = Column(Integer, nullable=False)

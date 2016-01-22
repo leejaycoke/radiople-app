@@ -76,7 +76,7 @@
                         </div>
                     </div>
                 </div>
-                <uib-progressbar class="progress-striped" value="progress" max="100" type="success" ng-show="isUploading">{[ progress ]}%</uib-progressbar>
+                <uib-progressbar class="progress-striped" value="progress" max="100" type="success" ng-show="isUploading">{[ progress ]}</uib-progressbar>
                 <button type="button" class="btn btn-info btn-default pull-right" ng-click="upload('{{ config.audio.server.url }}')" ng-show="audioFile && !episode.audio" ng-disabled="!audioFile || isUploading">업로드 시작</button>
                 <uib-alert type="info" ng-show="episode.audio"><strong>{[ episode.audio.upload_filename ]}</strong></uib-alert>
                 <div class="well" ng-show="episode.audio">

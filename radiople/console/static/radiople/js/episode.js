@@ -9,13 +9,13 @@ app.controller('ListController', function($scope, $httpParamSerializerJQLike, co
             q: $scope.q
         }
 
-        requestService.get('/episodes', params, {
+        requestService.get('/episode', params, {
             success: function(response) {
                 $scope.episodes = response.item;
                 $scope.paging = response.paging;
             },
             error: function(error) {
-
+                alert(error.display_message);
             }
         });
     }
@@ -78,7 +78,11 @@ app.controller('CreateController', function($scope, $filter, $httpParamSerialize
                 alert(error.display_message);
             },
             progress: function(p) {
-                $scope.progress = p;
+                if (p < 100) {
+                    $scope.progress = p;
+                } else {
+                    $scope.progress = "데이터 확인중.."
+                }
             },
             then: function(audio) {
                 $scope.progress = 0;
@@ -172,7 +176,11 @@ app.controller('EditController', function($scope, $filter, $httpParamSerializerJ
                 alert(error.display_message);
             },
             progress: function(p) {
-                $scope.progress = p;
+                if (p < 100) {
+                    $scope.progress = p;
+                } else {
+                    $scope.progress = "데이터 확인중.."
+                }
             },
             then: function(audio) {
                 $scope.progress = 0;

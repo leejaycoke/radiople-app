@@ -47,7 +47,7 @@ def edit_html():
     return {'episode_id': request.args.get('episode_id')}
 
 
-@bp_episode.route('s', methods=['GET'])
+@bp_episode.route('', methods=['GET'])
 @ConsoleAuthorization()
 @json_response(EpisodeListResponse)
 def get_episode_list():

@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from urllib import parse
+
 from hurry.filesize import size
 from hurry.filesize import alternative
 
@@ -13,10 +15,14 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 from sqlalchemy.dialects.postgresql import ARRAY
 
+from radiople.config import config
+
 from radiople.model.common import TimeStampMixin
 
 
 AUDIO_ID_SEQ = Sequence('audio_id_seq')
+
+AUDIO_CONTAINER = config.common.storage.audio_container
 
 
 class Audio(Base, TimeStampMixin):
@@ -39,6 +45,7 @@ class Audio(Base, TimeStampMixin):
     _display_bitrate = None
     _display_sample_rate = None
     _display_size = None
+    _container = None
 
     @property
     def display_length(self):
@@ -69,3 +76,11 @@ class Audio(Base, TimeStampMixin):
     @property
     def extension(self):
         return self.filename.rsplit('.', 1)[1]
+
+    @property
+    def container(self):
+        if self._container is None:
+            p = parse.urlparse(self.url)
+            self._container = AUDIO_CONTAINER + \
+                p.path.replace(self.filename, '')
+        return self._container

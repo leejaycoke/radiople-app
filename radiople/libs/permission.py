@@ -49,13 +49,13 @@ class Auth(object):
         for k, v in kwargs.items():
             setattr(self, k, v)
 
-    def is_guest(self, **kwargs):
+    def is_guest(self):
         return self.role == Role.GUEST
 
-    def is_user(self, **kwargs):
+    def is_user(self):
         return self.role == Role.USER
 
-    def is_dj(self, **kwargs):
+    def is_dj(self):
         return self.role == Role.DJ
 
 

@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-import random
 import uuid
-
-from datetime import datetime
 
 from flask import Flask
 from flask import abort
@@ -52,7 +49,7 @@ ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
 @app.route('/', methods=['PUT'])
 @cross_origin()
 @AudioAuthorization(Role.DJ, Role.ADMIN, position=Position.URL)
-@json_response()
+@json_response(AudioResponse)
 def upload_put():
     audio_file = request.files.get('file')
     if not audio_file:
@@ -99,7 +96,9 @@ def upload_put():
         url=data['url']
     )
 
-    return data
+    os.remove(dest)
+
+    return audio
 
 
 @app.route('/<string:filename>', methods=['GET'])

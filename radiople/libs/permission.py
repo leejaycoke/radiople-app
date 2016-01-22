@@ -34,6 +34,9 @@ class Service(object):
     WEB = 'web'
     ADMIN = 'admin'
     AUDIO = 'audio'
+    IMAGE = 'image'
+
+    ALL = [API, CONSOLE, WEB, ADMIN, AUDIO, IMAGE]
 
 
 class Auth(object):
@@ -220,6 +223,31 @@ class AudioAuthorization(Authorization):
     @property
     def default_roles(self):
         return [Role.DJ]
+
+    def success_execute(self, auth):
+        setattr(request, 'auth', auth)
+
+    def fail_execute(self, e):
+        raise e
+
+
+class ImageAuthorization(Authorization):
+
+    @property
+    def service(self):
+        return Service.IMAGE
+
+    @property
+    def allowed_services(self):
+        return Service.ALL
+
+    @property
+    def default_position(self):
+        return Position.URL
+
+    @property
+    def default_roles(self):
+        return Role.ALL
 
     def success_execute(self, auth):
         setattr(request, 'auth', auth)

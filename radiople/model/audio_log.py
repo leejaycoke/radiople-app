@@ -14,7 +14,7 @@ from radiople.model.common import CreatedAt
 AUDIO_LOG_ID_SEQ = Sequence('audio_log_id_seq')
 
 
-class Server(object):
+class Service(object):
 
     API = 'api'
     CONSOLE = 'console'
@@ -27,9 +27,8 @@ class AudioLog(Base, CreatedAt):
 
     id = Column(Integer, AUDIO_LOG_ID_SEQ, primary_key=True,
                 server_default=AUDIO_LOG_ID_SEQ.next_value())
-    server = Column(String, nullable=False, default=Server.API,
-                    server_default=Server.API)
+    service = Column(String, nullable=False, default=Service.API,
+                     server_default=Service.API)
     audio_id = Column(ForeignKey('audio.id', ondelete='CASCADE'),
                       nullable=False, index=True)
     user_id = Column(Integer, nullable=False, default=0, server_default="0")
-    byte_range = Column(String, nullable=False)

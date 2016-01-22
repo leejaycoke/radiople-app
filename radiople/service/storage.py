@@ -31,11 +31,9 @@ class Service(object):
             tenant_name=TENANT_NAME, key=KEY
         )
 
-    def generate_temp_url(self, object_name=None, seconds=3600, method='GET'):
-        object_name = object_name or uuid.uuid4().hex
-
+    def generate_temp_url(self, container, object_name, seconds=3600, method='GET'):
         signed_path = utils.generate_temp_url(
-            path=STORAGE_PATH + self.container + '/' + object_name,
+            path=STORAGE_PATH + container + object_name,
             seconds=seconds,
             key=SIGNED_URL_KEY,
             method=method

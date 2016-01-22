@@ -5,9 +5,9 @@ import uuid
 
 from flask import Flask
 from flask import abort
+from flask import redirect
 from flask import jsonify
 from flask import request
-from flask import Response
 from flask.ext.cors import cross_origin
 
 from mutagen.mp3 import MP3
@@ -15,12 +15,12 @@ from mutagen.mp3 import MP3
 from radiople.config import config
 from radiople.libs.response import json_response
 from radiople.libs.permission import AudioAuthorization
-from radiople.libs.permission import ApiAuthorization
 from radiople.libs.permission import Position
 
 from radiople.model.role import Role
 
 from radiople.service.audio import service as audio_service
+from radiople.service.audio_log import service as audio_log_service
 from radiople.service.storage import Service as StorageService
 
 from radiople.audio.response.audio import AudioResponse
@@ -50,7 +50,7 @@ ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
 @cross_origin()
 @AudioAuthorization(Role.DJ, Role.ADMIN, position=Position.URL)
 @json_response(AudioResponse)
-def upload_put():
+def upload():
     audio_file = request.files.get('file')
     if not audio_file:
         raise BadRequest("파일이 업로드되지 않았습니다.")
@@ -85,7 +85,7 @@ def upload_put():
         raise ServerError("죄송합니다. 도저히 알 수 없는 문제가 발생했습니다.")
 
     audio = audio_service.insert(
-        filename=filename,
+        filename=data['filename'],
         user_id=request.auth.user_id,
         upload_filename=audio_file.filename,
         mimes=audio.mime,
@@ -101,20 +101,26 @@ def upload_put():
     return audio
 
 
-@app.route('/<string:filename>', methods=['GET'])
-@ApiAuthorization(Role.ALL, position=Position.URL)
-def audio_get(filename):
+AUDIO_EXPIRES = 36000
+
+
+@app.route('/<string:d>/<string:m>/<string:y>/<string:filename>', methods=['GET'])
+@AudioAuthorization(Role.ALL, position=Position.URL)
+def get_audio(d, m, y, filename):
     audio = audio_service.get_by_filename(filename)
     if not audio:
         abort(404)
 
-    return redirect_audio(audio)
+    storage_service = StorageService()
+    temp_url = storage_service.generate_temp_url(
+        audio.container, filename, seconds=AUDIO_EXPIRES)
 
+    user_id = 0 if request.auth.is_guest() else request.auth.user_id
 
-def redirect_audio(audio):
-    response = Response()
-    response.status_code = 206
-    response.headers["X-Accel-Redirect"] = audio.full_filepath
-    response.headers["Content-Type"] = 'audio/mpeg'
-    response.headers['X-Accel-Buffering'] = 'no'
-    return response
+    audio_log_service.insert(
+        user_id=user_id,
+        service=request.auth.service,
+        audio_id=audio.id
+    )
+
+    return redirect(temp_url)

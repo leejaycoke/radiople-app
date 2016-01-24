@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import os
 import sys
 import uuid
 import re
 import requests
 import xmltodict
-
-from mutagen.mp3 import MP3
 
 from datetime import datetime
 
@@ -30,8 +27,6 @@ from radiople.service.episode import service as episode_service
 from radiople.service.sb_episode import service as sb_episode_service
 from radiople.service.user_broadcast import service as user_broadcast_service
 from radiople.service.setting import service as setting_service
-from radiople.service.audio import service as audio_service
-from radiople.service.storage import Service as StorageService
 
 PC_HEADER = {
     'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
@@ -112,8 +107,7 @@ class Crawler(object):
                     podbbang.broadcast_id, episode['title']):
                 continue
 
-            self.create_episode(podbbang.broadcast_id,
-                                broadcast.user_id, episode)
+            self.create_episode(podbbang.broadcast_id, episode)
 
     def create_podbbang(self, feed_url):
         return podbbang_service.insert(
@@ -215,44 +209,23 @@ class Crawler(object):
 
         return response.json().get('url')
 
-    def upload_audio(self, user_id, url):
+    def upload_audio(self, url):
         filename = self.download_file(url)
 
-        try:
-            audio = MP3(filename)
-            if audio.info.protected:
-                os.remove(filename)
-                sys.exit("> 에러가 발생했습니다.")
-        except:
-            os.remove(filename)
-            sys.exit("> 에러가 발생했습니다.")
-
-        storage_service = StorageService()
-        data = storage_service.put_audio(filename)
-
-        if not data:
-            os.remove(filename)
-            sys.exit("> 에러가 발생했습니다.")
-
-        audio = audio_service.insert(
-            filename=data['filename'],
-            user_id=user_id,
-            upload_filename=filename.split('/')[-1],
-            mimes=audio.mime,
-            size=os.path.getsize(filename),
-            length=audio.info.length,
-            sample_rate=audio.info.sample_rate,
-            bitrate=audio.info.bitrate,
-            url=data['url']
+        url = config.audio.server.url
+        response = requests.put(
+            url,
+            params={'access_token': ACCESS_TOKEN},
+            files={'file': open(filename, 'rb')}
         )
 
-        os.remove(filename)
+        if not response.ok:
+            raise Exception(response.json().get('display_message'))
 
-        return audio.id
+        return response.json().get('id')
 
-    def create_episode(self, broadcast_id, user_id, episode):
-        audio_id = self.upload_audio(user_id, episode.get('audio_url'))
-
+    def create_episode(self, broadcast_id, episode):
+        audio_id = self.upload_audio(episode.get('audio_url'))
         episode = episode_service.insert(
             broadcast_id=broadcast_id,
             audio_id=audio_id,

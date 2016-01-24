@@ -12,6 +12,8 @@ from flask.ext.cors import cross_origin
 
 from mutagen.mp3 import MP3
 
+from radiople.db import Session
+
 from radiople.config import config
 from radiople.libs.response import json_response
 from radiople.libs.permission import AudioAuthorization
@@ -42,6 +44,12 @@ def http_error_response(error):
     status_code = int(error.data['code'].split('.')[0])
     return jsonify(error.data), status_code
 
+
+@app.teardown_request
+def session_clear(exception=None):
+    Session.remove()
+    if exception and Session.is_active:
+        Session.rollback()
 
 ALLOWED_MIMES = set(['audio/mpeg', 'audio/mp3'])
 

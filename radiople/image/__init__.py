@@ -15,13 +15,14 @@ from flask import request
 from flask import send_file
 from flask.ext.cors import cross_origin
 
+from radiople.db import Session
+from radiople.config import config
+
 from radiople.libs.response import json_response
 from radiople.libs.permission import ImageAuthorization
 from radiople.libs.permission import Position
 
 from radiople.model.role import Role
-
-from radiople.config import config
 
 from radiople.exceptions import RadiopleException
 from radiople.exceptions import BadRequest
@@ -38,6 +39,13 @@ app.config['MAX_CONTENT_LENGTH'] = config.image.upload.max_size
 def http_error_response(error):
     status_code = int(error.data['code'].split('.')[0])
     return jsonify(error.data), status_code
+
+
+@app.teardown_request
+def session_clear(exception=None):
+    Session.remove()
+    if exception and Session.is_active:
+        Session.rollback()
 
 
 UPLOAD_PATH = config.image.upload.path

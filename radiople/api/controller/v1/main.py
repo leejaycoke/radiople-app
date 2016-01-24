@@ -34,10 +34,6 @@ def main_news_get():
 
         theme_broadcasts.append(item)
 
-    if len(theme_broadcasts[0]['broadcasts']) > 1:
-        theme_broadcasts[0]['broadcasts'] = theme_broadcasts[
-            0]['broadcasts'][:1]
-
     response = {'theme_broadcasts': theme_broadcasts}
 
     return response

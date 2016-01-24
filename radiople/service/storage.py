@@ -53,7 +53,8 @@ class Service(object):
                 contents=open(contents, 'rb'),
                 content_type='audio/mpeg'
             )
-        except:
+        except Exception as e:
+            print(">>>>>>>>>>>>>> put audio error : ", str(e))
             return {}
 
         return {

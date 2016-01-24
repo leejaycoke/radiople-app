@@ -38,6 +38,7 @@ class Broadcast(Base, TimeStampMixin):
 
     id = Column(Integer, BROADCAST_ID_SEQ, primary_key=True,
                 server_default=BROADCAST_ID_SEQ.next_value())
+    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
     title = Column(String, nullable=False, index=True)
     subtitle = Column(String, index=True)
     casting = Column(ARRAY(String), nullable=False)

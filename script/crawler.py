@@ -38,6 +38,8 @@ MOBILE_HEADER = {
 
 FEED_URL_PATTERN = re.compile(r"Feed URL : <\/strong>(.+)<\/p>")
 
+ACCESS_TOKEN, _, _ = access_token_service.issue(user_id=1, service='console')
+
 
 class Episode(Schema):
 
@@ -92,23 +94,17 @@ class Crawler(object):
 
         data = self.parse_feed(podbbang.feed_url)
 
-        if podbbang.broadcast_id:
-            user_broadcast = user_broadcast_service.get_by_broadcast_id(
-                podbbang.broadcast_id)
-            self.issue_access_token(user_broadcast.user_id)
-        else:
-            user = self.create_user()
-            self.issue_access_token(user.id)
+        if not podbbang.broadcast_id:
+            data['user_id'] = 1
             broadcast = self.create_broadcast(data)
-
-            self.create_user_broadcast(user.id, broadcast.id)
             podbbang_service.update(podbbang, broadcast_id=broadcast.id)
-
-        broadcast_id = podbbang.broadcast_id
+        else:
+            broadcast = broadcast_service.get(podbbang.broadcast_id)
+            data['user_id'] = broadcast.user_id
 
         for episode in data.get('episodes'):
-            if episode_service.guess_exists_episode(
-                    broadcast_id, episode['title'], episode['air_date']):
+            if episode_service.get_by_broadcast_title(
+                    podbbang.broadcast_id, episode['title']):
                 continue
 
             self.create_episode(podbbang.broadcast_id, episode)
@@ -121,7 +117,7 @@ class Crawler(object):
 
     def create_broadcast(self, data):
         image = self.upload_image(data['image_url']) if data[
-            'image_url'] else None
+            'image_url'] and data['image_url'] != '' else None
 
         broadcast = broadcast_service.insert(
             title=data['title'],
@@ -130,7 +126,8 @@ class Crawler(object):
             icon_image=image,
             cover_image=image,
             description=data['description'],
-            link=data['link']
+            link=data['link'],
+            user_id=data['user_id']
         )
 
         sb_broadcast_service.insert(broadcast_id=broadcast.id)
@@ -182,17 +179,17 @@ class Crawler(object):
         filename = "/tmp/%s.mp3" % uuid.uuid4().hex
 
         with open(filename, "wb") as f:
-            print("> Downloading : %s" % filename)
+            print("> Downloading : %s" % url)
             response = requests.get(
                 url, headers=PC_HEADER, allow_redirects=True, stream=True)
             content_length = int(response.headers.get('Content-Length', 0))
 
-            dl = 0
+            progress = 0
 
             for data in response.iter_content(chunk_size=1024):
-                dl += len(data)
+                progress += len(data)
                 f.write(data)
-                done = int(50 * dl / content_length)
+                done = int(50 * progress / content_length)
                 sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50 - done)))
                 sys.stdout.flush()
 
@@ -204,10 +201,9 @@ class Crawler(object):
         url = config.image.server.url
         response = requests.put(
             url,
-            params={'access_token': self.access_token},
+            params={'access_token': ACCESS_TOKEN},
             files={'file': open(filename, 'rb')}
         )
-
         if not response.ok:
             raise Exception(response.json().get('display_message'))
 
@@ -219,7 +215,7 @@ class Crawler(object):
         url = config.audio.server.url
         response = requests.put(
             url,
-            params={'access_token': self.access_token},
+            params={'access_token': ACCESS_TOKEN},
             files={'file': open(filename, 'rb')}
         )
 
@@ -227,10 +223,6 @@ class Crawler(object):
             raise Exception(response.json().get('display_message'))
 
         return response.json().get('id')
-
-    def issue_access_token(self, user_id):
-        self.access_token, _, _ = access_token_service.issue(
-            user_id=user_id, service=Service.API)
 
     def create_episode(self, broadcast_id, episode):
         audio_id = self.upload_audio(episode.get('audio_url'))

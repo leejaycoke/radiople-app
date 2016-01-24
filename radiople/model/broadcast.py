@@ -58,9 +58,8 @@ class Broadcast(Base, TimeStampMixin):
     @property
     def activity(self):
         if request.auth.is_guest:
-            return None
-
-        if self._activity is None:
+            self._activity = {}
+        elif self._activity is None:
             activity = object_session(self).query(Broadcast) \
                 .with_entities(
                     self._is_subscriber_as_scalar,

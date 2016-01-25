@@ -11,6 +11,10 @@ class UserService(Service):
 
     __model__ = User
 
+    def get_admin_users(self):
+        return Session.query(self.__model__) \
+            .filter(User.role == Role.ADMIN).all()
+
     def exists(self, user_id):
         return Session.query(
             Session.query(self.__model__)
@@ -36,6 +40,7 @@ class UserService(Service):
     def get_by_broadcast_id(self, broadcast_id):
         return Session.query(self.__model__) \
             .filter(User.broadcast_id == broadcast_id).scalar()
+
 
 class ApiUserService(UserService):
     pass

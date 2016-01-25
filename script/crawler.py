@@ -7,7 +7,17 @@ import re
 import requests
 import xmltodict
 
+import mutagen
+import feedparser
+
+from bs4 import BeautifulSoup
+
 from mutagen.mp3 import MP3
+
+from pydub import AudioSegment
+from pydub import utils
+
+from dateutil import parser
 
 from datetime import datetime
 
@@ -37,152 +47,139 @@ PC_HEADER = {
     'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
 }
 
-MOBILE_HEADER = {
-    'User-Agent': "Mozilla/5.0 (Linux; Android 4.4; Nexus 5 Build/_BuildID_) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/30.0.0.0 Mobile Safari/537.36"
-}
+ADMIN_USER_ID = user_service.get_admin_users()[0].id
 
-FEED_URL_PATTERN = re.compile(r"Feed URL : <\/strong>(.+)<\/p>")
-
-ACCESS_TOKEN, _, _ = access_token_service.issue(user_id=1, service='console')
+ACCESS_TOKEN, _, _ = access_token_service.issue(
+    user_id=ADMIN_USER_ID, service='console')
 
 
-class Episode(Schema):
+def convert_mp4_to_mp3(filename):
+    try:
+        audio = AudioSegment.from_file(filename)
+        audio.export(filename, format='mp3', bitrate='128k')
+    except:
+        raise Exception("파일 변환이 불가능합니다. : ", filename)
 
-    title = fields.String(default=None)
-    subtitle = fields.String(default=None, attribute='itunes:subtitle')
-    air_date = fields.Method('get_air_date')
-    audio_url = fields.Url(attribute='guid')
+    return filename
 
-    def get_air_date(self, episode):
-        return datetime.strptime(
-            episode.get('pubDate'), "%a, %d %b %Y %H:%M:%S %z")
+
+def create_default_email():
+    return '%s@radiople.com' % uuid.uuid4().hex
 
 
 class Broadcast(Schema):
 
     title = fields.String(default=None)
     link = fields.Url(default=None)
-    subtitle = fields.String(default=None, attribute='itunes:subtitle')
-    description = fields.String(default=None)
+    subtitle = fields.String(default=None)
+    description = fields.Method('get_summary')
     casting = fields.Method('get_casting', default=[])
     email = fields.Method('get_email')
-    image_url = fields.Method('get_image_url')
+    icon_image = fields.Method('get_icon_image')
+    cover_image = fields.Method('get_cover_image')
 
-    episodes = fields.Nested(Episode, many=True, attribute='item')
+    def get_casting(self, feed):
+        castings = [c.strip() for c in feed.author.split(',')]
+        for author in feed.authors:
+            castings += [c.strip() for c in author.get('name').split(',')]
+        return list(set(castings))
 
-    def get_casting(self, channel):
-        casting = channel.get('itunes:author', '')
-        if casting:
-            return [c.strip() for c in casting.split(',')]
-        return []
+    def get_email(self, feed):
+        return feed.get('author_detail', {}) \
+            .get('email', create_default_email())
 
-    def get_email(self, channel):
-        return channel.get('itunes:owner', {}).get('itunes:email')
+    def get_icon_image(self, feed):
+        return feed.get('image', {}).get('href')
 
-    def get_image_url(self, channel):
-        return channel.get('itunes:image', {}).get('@href')
+    def get_cover_image(self, feed):
+        return feed.get('image', {}).get('href')
+
+    def get_summary(self, feed):
+        return BeautifulSoup(feed.summary, 'html.parser').text
+
+
+class Episode(Schema):
+
+    title = fields.Method('get_title')
+    subtitle = fields.Method('get_subtitle')
+    air_date = fields.Method('get_air_date')
+    audio_url = fields.Method('get_audio_url')
+
+    def get_title(self, entry):
+        return BeautifulSoup(entry.title, 'html.parser').text
+
+    def get_subtitle(self, entry):
+        return BeautifulSoup(entry.get('subtitle', ''), 'html.parser').text
+
+    def get_air_date(self, entry):
+        return parser.parse(entry.published)
+
+    def get_audio_url(self, entry):
+        for entry in entry.links:
+            link_type = entry.get('type')
+            if 'audio' in link_type or 'video' in link_type:
+                return entry.get('href')
+
+
+class Episodes(Schema):
+
+    episodes = fields.Nested(Episode, many=True)
 
 
 class Crawler(object):
 
-    FEED_URL_PATTERN = re.compile(r"Feed URL : <\/strong>(.+)<\/p>")
-
-    def __init__(self, channel_id):
-        self.channel_id = channel_id
-        self.channel_url = "http://podbbang.com/ch/%d" % channel_id
+    def __init__(self, feed_url):
+        self.feed_url = feed_url
 
     def run(self):
-        podbbang = podbbang_service.get(self.channel_id)
-        if not podbbang:
-            feed_url = self.get_feed_url()
-            podbbang = self.create_podbbang(feed_url)
+        feed, items = self.parse_feed()
 
-        data = self.parse_feed(podbbang.feed_url)
+        broadcast = broadcast_service.get_by_feed_url(self.feed_url)
+        if not broadcast:
+            if broadcast_service.exists_title(feed.get('title')):
+                raise Exception("이미 존재하는 방송입니다. : ", feed.get('title'))
 
-        if not podbbang.broadcast_id:
-            data['user_id'] = 1
-            broadcast = self.create_broadcast(data)
-            podbbang_service.update(podbbang, broadcast_id=broadcast.id)
-        else:
-            broadcast = broadcast_service.get(podbbang.broadcast_id)
-            data['user_id'] = broadcast.user_id
+            broadcast = self.create_broadcast(feed)
 
-        for episode in data.get('episodes'):
-            if episode_service.get_by_broadcast_title(
-                    podbbang.broadcast_id, episode['title']):
+        for item in items[:5]:
+            if episode_service.exists_title_by_broadcast_id(
+                    broadcast.id, broadcast.title):
                 continue
+            episode = self.create_episode(broadcast, item)
+            print('> created episode : ', episode.title)
 
-            self.create_episode(podbbang.broadcast_id,
-                                broadcast.user_id, episode)
-
-    def create_podbbang(self, feed_url):
-        return podbbang_service.insert(
-            id=self.channel_id,
-            feed_url=feed_url
-        )
-
-    def create_broadcast(self, data):
-        image = self.upload_image(data['image_url']) if data[
-            'image_url'] and data['image_url'] != '' else None
+    def create_broadcast(self, feed):
+        if feed['icon_image']:
+            image = self.upload_image(feed['icon_image'])
+        else:
+            image = None
 
         broadcast = broadcast_service.insert(
-            title=data['title'],
-            subtitle=data['subtitle'],
-            casting=data['casting'],
+            title=feed['title'],
+            subtitle=feed['subtitle'],
+            casting=feed['casting'],
             icon_image=image,
             cover_image=image,
-            description=data['description'],
-            link=data['link'],
-            user_id=data['user_id']
+            description=feed['description'],
+            link=feed['link'],
+            user_id=ADMIN_USER_ID,
+            feed_url=self.feed_url
         )
 
         sb_broadcast_service.insert(broadcast_id=broadcast.id)
 
         return broadcast
 
-    def get_feed_url(self):
-        try:
-            html = requests.get(self.channel_url).text
-        except:
-            raise Exception("failed to networking: ", self.channel_url)
+    def parse_feed(self):
+        content = requests.get(self.feed_url).content
+        data = feedparser.parse(content)
 
-        try:
-            return self.FEED_URL_PATTERN.findall(html)[0]
-        except:
-            raise Exception("failed to parsing xml url")
-
-    def parse_feed(self, feed_url):
-        content = requests.get(feed_url).content
-        data = xmltodict.parse(content)
-
-        rss = data.get('rss')
-        channel = rss.get('channel')
-
-        return Broadcast().dump(channel).data
-
-    def create_user(self):
-        user = user_service.insert(
-            email=uuid.uuid4().hex + "@radiople.com",
-            nickname=uuid.uuid4().hex,
-            role=Role.DJ
-        )
-
-        sb_user_service.insert(
-            user_id=user.id
-        )
-
-        setting_service.insert(
-            user_id=user.id
-        )
-
-        return user
-
-    def create_user_broadcast(self, user_id, broadcast_id):
-        return user_broadcast_service.insert(
-            user_id=user_id, broadcast_id=broadcast_id)
+        feed = Broadcast().dump(data.feed).data
+        items = Episodes().dump({'episodes': data.entries}).data
+        return feed, items.get('episodes')
 
     def download_file(self, url):
-        filename = "/tmp/%s.mp3" % uuid.uuid4().hex
+        filename = "/tmp/%s" % uuid.uuid4().hex
 
         with open(filename, "wb") as f:
             print("> Downloading : %s" % url)
@@ -197,7 +194,9 @@ class Crawler(object):
                 f.write(data)
                 done = int(50 * progress / content_length)
                 sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50 - done)))
-                sys.stdout.flush()
+
+            sys.stdout.write('\n')
+            sys.stdout.flush()
 
         return filename
 
@@ -215,50 +214,58 @@ class Crawler(object):
 
         return response.json().get('url')
 
-    def upload_audio(self, user_id, url):
-        filename = self.download_file(url)
+    def upload_audio(self, broadcast, item):
+        temp_filename = self.download_file(item['audio_url'])
+        try:
+            audio = AudioSegment.from_file(temp_filename)
+            tags = {
+                'artist': broadcast.title,
+                'album': broadcast.title,
+                'title': item['title'],
+                'comment': 'http://radiople.com',
+            }
+            audio.export(temp_filename, format='mp3',
+                         bitrate='128k', tags=tags)
+        except Exception as e:
+            raise Exception("> mp3 변환 도중 에러가 발생했습니다. : ", str(e))
 
         try:
-            audio = MP3(filename)
-            if audio.info.protected:
-                os.remove(filename)
-                sys.exit("> 에러가 발생했습니다.")
-        except:
-            os.remove(filename)
-            sys.exit("> 에러가 발생했습니다.")
+            mp3 = MP3(temp_filename)
+        except Exception as e:
+            raise Exception("> Mutagen 파일을 열 수 없습니다. : ", str(e))
 
         storage_service = StorageService()
-        data = storage_service.put_audio(filename)
+        data = storage_service.put_audio(temp_filename)
 
         if not data:
-            os.remove(filename)
-            sys.exit("> 에러가 발생했습니다.")
+            os.remove(temp_filename)
+            raise Exception("> 업로드 도중 에러가 발생했습니다.")
 
         audio = audio_service.insert(
             filename=data['filename'],
-            user_id=user_id,
-            upload_filename=filename.split()
-            mimes=audio.mime,
-            size=os.path.getsize(filename),
-            length=audio.info.length,
-            sample_rate=audio.info.sample_rate,
-            bitrate=audio.info.bitrate,
+            user_id=broadcast.user_id,
+            upload_filename=temp_filename.split('/')[-1],
+            mimes=mp3.mime,
+            size=os.path.getsize(temp_filename),
+            length=mp3.info.length,
+            sample_rate=mp3.info.sample_rate,
+            bitrate=mp3.info.bitrate,
             url=data['url']
         )
 
-        os.remove(filename)
+        os.remove(temp_filename)
 
         return audio.id
 
-    def create_episode(self, broadcast_id, user_id, episode):
-        audio_id = self.upload_audio(user_id, episode.get('audio_url'))
+    def create_episode(self, broadcast, item):
+        audio_id = self.upload_audio(broadcast, item)
 
         episode = episode_service.insert(
-            broadcast_id=broadcast_id,
+            broadcast_id=broadcast.id,
             audio_id=audio_id,
-            title=episode['title'],
-            subtitle=episode['subtitle'],
-            air_date=episode['air_date'],
+            title=item['title'],
+            subtitle=item['subtitle'],
+            air_date=item['air_date'],
         )
 
         sb_episode_service.insert(episode_id=episode.id)
@@ -267,5 +274,5 @@ class Crawler(object):
 
 
 def run(args):
-    crawler = Crawler(int(args['--channel-id']))
+    crawler = Crawler(args['--feed-url'])
     crawler.run()

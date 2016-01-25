@@ -51,10 +51,12 @@ class EpisodeService(Service):
             .filter(Episode.air_date == air_date).exists()
         ).scalar()
 
-    def get_by_broadcast_title(self, broadcast_id, title):
-        return Session.query(self.__model__) \
-            .filter(Episode.broadcast_id == broadcast_id) \
-            .filter(Episode.title == title).scalar()
+    def exists_title_by_broadcast_id(self, broadcast_id, title):
+        return Session.query(
+            Session.query(self.__model__)
+            .filter(Episode.broadcast_id == broadcast_id)
+            .filter(Episode.title == title).exists()
+        ).scalar()
 
 
 class ApiEpisodeService(EpisodeService):

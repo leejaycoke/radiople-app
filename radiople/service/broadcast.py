@@ -29,16 +29,19 @@ class BroadcastService(Service):
         return Session.query(self.__model__) \
             .filter(Broadcast.title == title).scalar()
 
+    def exists_title(self, title):
+        return Session.query(
+            Session.query(self.__model__)
+            .filter(Broadcast.title == title).exists()
+        ).scalar()
+
     def get_all(self):
         return Session.query(Broadcast) \
             .order_by(asc(Broadcast.id)).all()
 
-    def get_mine(self, partner_id):
-        try:
-            return Session.query(Broadcast) \
-                .filter(Broadcast.partner_id == partner_id).one()
-        except:
-            return None
+    def get_by_feed_url(self, feed_url):
+        return Session.query(self.__model__) \
+            .filter(Broadcast.feed_url == feed_url).scalar()
 
     def is_subscriber_scalar(self, user_id, broadcast_id):
         return Session.query(self.__model__) \

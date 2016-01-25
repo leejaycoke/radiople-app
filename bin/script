@@ -6,7 +6,7 @@
 Radiople Script
 
 Usage:
-    run.py crawler --channel-id=<channel_id>
+    run.py crawler --feed-url=<url>
 
 Options:
   -h --help     Show this screen.

@@ -264,7 +264,7 @@ class Crawler(object):
             icon_image=image,
             cover_image=image,
             description=feed['description'],
-            link=feed['link'],
+            link=feed.get('link'),
             user_id=ADMIN_USER_ID,
             feed_url=self.feed_url
         )

@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-import os
 import sys
 import uuid
-import re
 import logging
 import requests
-import xmltodict
 
 import mimetypes
 import mutagen
@@ -14,21 +11,13 @@ import feedparser
 
 from bs4 import BeautifulSoup
 
-from mutagen.mp3 import MP3
-
 from pydub import AudioSegment
-from pydub import utils
 
 from dateutil import parser
-
-from datetime import datetime
 
 from marshmallow import fields
 from marshmallow import Schema
 
-from radiople.model.role import Role
-
-from radiople.libs.permission import Service
 from radiople.libs.conoha import ConohaStorage
 
 from radiople.config import config
@@ -36,16 +25,11 @@ from radiople.config import config
 from radiople.model.storage import ACCEPTABLE_MIMES
 
 from radiople.service.crypto import access_token_service
-from radiople.service.podbbang import service as podbbang_service
 from radiople.service.user import service as user_service
-from radiople.service.sb_user import service as sb_user_service
 from radiople.service.broadcast import service as broadcast_service
 from radiople.service.sb_broadcast import service as sb_broadcast_service
 from radiople.service.episode import service as episode_service
 from radiople.service.sb_episode import service as sb_episode_service
-from radiople.service.user_broadcast import service as user_broadcast_service
-from radiople.service.setting import service as setting_service
-from radiople.service.audio import service as audio_service
 from radiople.service.storage import service as storage_service
 
 
@@ -255,6 +239,7 @@ class Crawler(object):
         if feed['icon_image']:
             image = self.upload_image(feed['icon_image'])
         else:
+            print(">>>>>>>>>>>> no image")
             image = None
 
         broadcast = broadcast_service.insert(
@@ -329,7 +314,7 @@ class Crawler(object):
                 files={'file': open(filename, 'rb')}
             )
 
-            response.json().get('url')
+            return response.json().get('url')
         except:
             return None
 

@@ -11,12 +11,13 @@ import feedparser
 
 from bs4 import BeautifulSoup
 
-from pydub import AudioSegment
-
+from datetime import timedelta
 from dateutil import parser
 
 from marshmallow import fields
 from marshmallow import Schema
+
+from radiople.db import Session
 
 from radiople.libs.conoha import ConohaStorage
 
@@ -53,16 +54,6 @@ ACCESS_TOKEN, _, _ = access_token_service.issue(
     user_id=ADMIN_USER_ID, service='console')
 
 IMAGE_SERVER_URL = config.image.server.url
-
-
-def convert_mp4_to_mp3(filename):
-    try:
-        audio = AudioSegment.from_file(filename)
-        audio.export(filename, format='mp3', bitrate='128k')
-    except:
-        raise Exception("파일 변환이 불가능합니다. : ", filename)
-
-    return filename
 
 
 def create_default_email():
@@ -239,7 +230,6 @@ class Crawler(object):
         if feed['icon_image']:
             image = self.upload_image(feed['icon_image'])
         else:
-            print(">>>>>>>>>>>> no image")
             image = None
 
         broadcast = broadcast_service.insert(
@@ -290,13 +280,18 @@ class Crawler(object):
         return storage_service.insert(**params)
 
     def create_episode(self, broadcast_id, storage_id, item):
-        episode = episode_service.insert(
+        data = dict(
             broadcast_id=broadcast_id,
             title=item['title'],
             subtitle=item['subtitle'],
             air_date=item['air_date'],
             storage_id=storage_id
         )
+
+        if episode_service.exists_air_date_by_broadcast_id(
+                broadcast_id, data['air_date']):
+            data['air_date'] = data['air_date'] + timedelta(minutes=-1)
+            episode = episode_service.insert(**data)
 
         sb_episode_service.insert(episode_id=episode.id)
 

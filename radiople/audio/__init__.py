@@ -18,10 +18,12 @@ from radiople.config import config
 from radiople.libs.response import json_response
 from radiople.libs.permission import AudioAuthorization
 from radiople.libs.permission import Position
+from radiople.libs.conoha import ConohaStorage
 
 from radiople.model.role import Role
 
 from radiople.service.audio import service as audio_service
+from radiople.service.storage import service as storage_service
 from radiople.service.audio_log import service as audio_log_service
 from radiople.service.storage import Service as StorageService
 
@@ -109,26 +111,33 @@ def upload():
     return audio
 
 
-AUDIO_EXPIRES = 36000
+OBJECT_TEMP_EXPIRES = 36000
 
 
 @app.route('/<string:d>/<string:m>/<string:y>/<string:filename>', methods=['GET'])
+@json_response()
 @AudioAuthorization(Role.ALL, position=Position.URL)
-def get_audio(d, m, y, filename):
-    audio = audio_service.get_by_filename(filename)
+def get_object(d, m, y, filename):
+    audio = storage_service.get_by_filename(filename)
     if not audio:
         abort(404)
 
-    storage_service = StorageService()
-    temp_url = storage_service.generate_temp_url(
-        audio.container, filename, seconds=AUDIO_EXPIRES)
+    full_filename = '/%s/%s/%s/%s' % (d, m, y, filename)
+
+    conoha_storage = ConohaStorage()
+    temp_url = conoha_storage.generate_temp_url(
+        full_filename, seconds=OBJECT_TEMP_EXPIRES)
 
     user_id = 0 if request.auth.is_guest() else request.auth.user_id
 
-    audio_log_service.insert(
-        user_id=user_id,
-        service=request.auth.service,
-        audio_id=audio.id
-    )
+    # audio_log_service.insert(
+    #     user_id=user_id,
+    #     service=request.auth.service,
+    #     audio_id=audio.id
+    # )
 
-    return redirect(temp_url)
+    return {
+        'urls': [
+            {'url': temp_url, 'type': 'audio'}
+        ]
+    }

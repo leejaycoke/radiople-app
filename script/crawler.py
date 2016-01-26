@@ -291,7 +291,8 @@ class Crawler(object):
         if episode_service.exists_air_date_by_broadcast_id(
                 broadcast_id, data['air_date']):
             data['air_date'] = data['air_date'] + timedelta(minutes=-1)
-            episode = episode_service.insert(**data)
+
+        episode = episode_service.insert(**data)
 
         sb_episode_service.insert(episode_id=episode.id)
 

@@ -26,17 +26,12 @@ def main_news_get():
     theme_broadcasts = []
 
     themes = theme_service.get_all()
-
     for theme in themes:
         item = {'theme': theme}
         broadcasts = theme_broadcast_service.get_broadcasts(theme.id, 2)
-        item['broadcasts'] = broadcasts
-
-        theme_broadcasts.append(item)
-
-    if len(theme_broadcasts[0]['broadcasts']) > 1:
-        theme_broadcasts[0]['broadcasts'] = theme_broadcasts[
-            0]['broadcasts'][:1]
+        if broadcasts:
+            item['broadcasts'] = broadcasts
+            theme_broadcasts.append(item)
 
     response = {'theme_broadcasts': theme_broadcasts}
 

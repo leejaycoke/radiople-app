@@ -21,7 +21,7 @@ from sqlalchemy.ext.mutable import MutableDict
 
 STORAGE_ID_SEQ = Sequence('storage_id_seq')
 
-ACCEPTABLE_MIMES = ['audio/mp3', 'audio/mpeg',
+ACCEPTABLE_MIMES = ['audio/mp3', 'audio/mpeg', 'application/octet-stream',
                     'audio/mpeg3', 'video/mp4', 'application/pdf']
 
 

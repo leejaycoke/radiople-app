@@ -10,12 +10,6 @@ body {
     background-color: #f1f1f1;
 }
 
-@media (max-width: 767px) {
-    .main {
-        margin-top: 70px;
-    }
-}
-
 .center {
     text-align: center;
 }
@@ -33,16 +27,17 @@ body {
 
 .navbar {
     height: 56px;
-    background-color: #428bca;
+    background-color: #fff;
 }
 
 .navbar-inverse .navbar-brand {
-    color: #fff;
-    line-height: 28px;
+    color: #ea2f29;
+    line-height: 26px;
+    font-weight: bold;
 }
 
 .navbar-fixed-top {
-    border-color: #428bca;
+    border-bottom: 3px solid #ea2f29;
 }
 
 .content-wrapper,
@@ -51,7 +46,7 @@ body {
 }
 
 .navbar-inverse .navbar-toggle {
-    background-color: #428bca;
+    background-color: #ea2f29;
     border: 0;
     margin: 0;
     height: 56px;
@@ -60,7 +55,7 @@ body {
 
 .navbar-inverse .navbar-toggle:hover,
 .navbar-inverse .navbar-toggle:focus {
-    background-color: #357EBD;
+    background-color: #ea2f29;
 }
 
 .navbar-inverse .navbar-toggle .icon-bar {
@@ -127,13 +122,6 @@ body {
     margin-right: 6px;
 }
 
-.main {
-    padding-right: 40px;
-    padding-left: 40px;
-    padding-top: 20px;
-    padding-bottom: 20px;
-}
-
 .main .page-header {
     margin-top: 0;
 }
@@ -162,4 +150,13 @@ body {
 
 important {
     color: red;
+}
+
+@media(min-width:767px) {
+    .main {
+        padding-top: 10px;
+        padding-left: 32px;
+        padding-right: 32px;
+        padding-bottom: 32px;
+    }
 }

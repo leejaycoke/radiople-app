@@ -14,6 +14,7 @@ from sqlalchemy import Integer
 from sqlalchemy import ForeignKey
 from sqlalchemy.dialects.postgresql import DOUBLE_PRECISION
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import JSONB
 
 from radiople.config import config
 
@@ -22,7 +23,7 @@ from radiople.model.common import TimeStampMixin
 
 AUDIO_ID_SEQ = Sequence('audio_id_seq')
 
-AUDIO_CONTAINER = config.common.storage.audio_container
+AUDIO_CONTAINER = config.common.storage.container
 
 
 class Audio(Base, TimeStampMixin):
@@ -39,6 +40,7 @@ class Audio(Base, TimeStampMixin):
     bitrate = Column(Integer, nullable=False)
     mimes = Column(ARRAY(String), nullable=False)
     url = Column(String, nullable=False)
+    episode_id = Column(ForeignKey('episode.id', ondelete="CASCADE"))
     user_id = Column(ForeignKey('user.id', ondelete="CASCADE"))
 
     _display_length = None

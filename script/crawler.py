@@ -4,9 +4,11 @@ import os
 import sys
 import uuid
 import re
+import logging
 import requests
 import xmltodict
 
+import mimetypes
 import mutagen
 import feedparser
 
@@ -27,8 +29,11 @@ from marshmallow import Schema
 from radiople.model.role import Role
 
 from radiople.libs.permission import Service
+from radiople.libs.conoha import ConohaStorage
 
 from radiople.config import config
+
+from radiople.model.storage import ACCEPTABLE_MIMES
 
 from radiople.service.crypto import access_token_service
 from radiople.service.podbbang import service as podbbang_service
@@ -41,16 +46,29 @@ from radiople.service.sb_episode import service as sb_episode_service
 from radiople.service.user_broadcast import service as user_broadcast_service
 from radiople.service.setting import service as setting_service
 from radiople.service.audio import service as audio_service
-from radiople.service.storage import Service as StorageService
+from radiople.service.storage import service as storage_service
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+stream = logging.StreamHandler(sys.stdout)
+stream.setLevel(logging.DEBUG)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s')
+stream.setFormatter(formatter)
+logger.addHandler(stream)
+
+TEMP_PATH = '/tmp/'
 
 PC_HEADER = {
     'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
 }
 
 ADMIN_USER_ID = user_service.get_admin_users()[0].id
-
 ACCESS_TOKEN, _, _ = access_token_service.issue(
     user_id=ADMIN_USER_ID, service='console')
+
+IMAGE_SERVER_URL = config.image.server.url
 
 
 def convert_mp4_to_mp3(filename):
@@ -67,6 +85,66 @@ def create_default_email():
     return '%s@radiople.com' % uuid.uuid4().hex
 
 
+class Utils(object):
+
+    @staticmethod
+    def download_file(url, filename):
+        info = {
+            'filename': Utils.get_filename(filename)
+        }
+
+        with open(filename, "wb") as f:
+            response = requests.get(
+                url, headers=PC_HEADER, allow_redirects=True, stream=True)
+
+            content_length = int(response.headers.get('Content-Length', 0))
+            info['size'] = content_length
+
+            md_size = content_length / (1024 * 1204)
+            logger.debug("Start download [%dMB]: %s", md_size, url)
+
+            progress = 0
+            for data in response.iter_content(chunk_size=1024):
+                progress += len(data)
+                f.write(data)
+                done = int(50 * progress / content_length)
+                sys.stdout.write("\r> [%s%s]" %
+                                 ('=' * done, ' ' * (50 - done)))
+
+            sys.stdout.write('\n')
+            sys.stdout.flush()
+
+        logger.debug("Complete download: %s", filename)
+
+        return info
+
+    @staticmethod
+    def get_extension(mime):
+        extension = mimetypes.guess_extension(mime)
+        if not extension:
+            return '.' + mime.split('/')[-1]
+        return extension
+
+    @staticmethod
+    def get_media(filename):
+        try:
+            media = mutagen.File(filename)
+            if hasattr(media, 'info'):
+                return media
+            else:
+                raise Exception("not media file")
+        except:
+            return None
+
+    @staticmethod
+    def get_filename(full_filename):
+        return full_filename.split('/')[-1]
+
+    @staticmethod
+    def generate_filename(extension):
+        filename = '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex, extension)
+
+
 class Broadcast(Schema):
 
     title = fields.String(default=None)
@@ -81,7 +159,8 @@ class Broadcast(Schema):
     def get_casting(self, feed):
         castings = [c.strip() for c in feed.author.split(',')]
         for author in feed.authors:
-            castings += [c.strip() for c in author.get('name').split(',')]
+            if 'name' in author:
+                castings += [c.strip() for c in author.get('name').split(',')]
         return list(set(castings))
 
     def get_email(self, feed):
@@ -103,10 +182,10 @@ class Episode(Schema):
     title = fields.Method('get_title')
     subtitle = fields.Method('get_subtitle')
     air_date = fields.Method('get_air_date')
-    audio_url = fields.Method('get_audio_url')
+    content = fields.Method('get_content')
 
     def get_title(self, entry):
-        return BeautifulSoup(entry.title, 'html.parser').text
+        return BeautifulSoup(entry.title, 'html.parser').text.strip()
 
     def get_subtitle(self, entry):
         return BeautifulSoup(entry.get('subtitle', ''), 'html.parser').text
@@ -114,11 +193,13 @@ class Episode(Schema):
     def get_air_date(self, entry):
         return parser.parse(entry.published)
 
-    def get_audio_url(self, entry):
+    def get_content(self, entry):
         for entry in entry.links:
-            link_type = entry.get('type')
-            if 'audio' in link_type or 'video' in link_type:
-                return entry.get('href')
+            mime = entry.get('type')
+            if mime in ACCEPTABLE_MIMES:
+                return {'url': entry.get('href'), 'mime': mime}
+            else:
+                logging.warning("> NOT_ACCEPTABLE_CONTENT: ", mime)
 
 
 class Episodes(Schema):
@@ -137,16 +218,30 @@ class Crawler(object):
         broadcast = broadcast_service.get_by_feed_url(self.feed_url)
         if not broadcast:
             if broadcast_service.exists_title(feed.get('title')):
-                raise Exception("이미 존재하는 방송입니다. : ", feed.get('title'))
+                logger.error("Already exists broadcast: %s", feed.get('title'))
+                sys.exit(1)
 
+            logger.info("Create broadcast: %s", feed.get('title'))
             broadcast = self.create_broadcast(feed)
 
-        for item in items[:5]:
+        for item in items[:10]:
             if episode_service.exists_title_by_broadcast_id(
-                    broadcast.id, broadcast.title):
+                    broadcast.id, item['title']):
+                logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
                 continue
-            episode = self.create_episode(broadcast, item)
-            print('> created episode : ', episode.title)
+
+            storage = self.create_storage(broadcast.user_id, item['content'])
+            logger.info("CREATED_STORAGE %d", storage.id)
+            episode = self.create_episode(broadcast.id, storage.id, item)
+            logger.info("CREATED_EPISODE %d", episode.id)
+
+    def parse_feed(self):
+        content = requests.get(self.feed_url).content
+        data = feedparser.parse(content)
+
+        feed = Broadcast().dump(data.feed).data
+        items = Episodes().dump({'episodes': data.entries}).data
+        return feed, items.get('episodes')
 
     def create_broadcast(self, feed):
         if feed['icon_image']:
@@ -170,107 +265,64 @@ class Crawler(object):
 
         return broadcast
 
-    def parse_feed(self):
-        content = requests.get(self.feed_url).content
-        data = feedparser.parse(content)
+    def create_storage(self, user_id, content):
+        filename = '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex,
+                               Utils.get_extension(content['mime']))
+        data = Utils.download_file(content['url'], filename)
 
-        feed = Broadcast().dump(data.feed).data
-        items = Episodes().dump({'episodes': data.entries}).data
-        return feed, items.get('episodes')
+        conoha_storage = ConohaStorage()
+        # upload filename, saving filename
+        result = conoha_storage.put_object(filename, data['filename'])
 
-    def download_file(self, url):
-        filename = "/tmp/%s" % uuid.uuid4().hex
+        media = Utils.get_media(filename)
 
-        with open(filename, "wb") as f:
-            print("> Downloading : %s" % url)
-            response = requests.get(
-                url, headers=PC_HEADER, allow_redirects=True, stream=True)
-            content_length = int(response.headers.get('Content-Length', 0))
+        params = {
+            'user_id': user_id,
+            'filename': data['filename'],
+            'uploaded_filename': data['filename'],
+            'size': data['size'],
+            'url': result['url']
+        }
 
-            progress = 0
-
-            for data in response.iter_content(chunk_size=1024):
-                progress += len(data)
-                f.write(data)
-                done = int(50 * progress / content_length)
-                sys.stdout.write("\r[%s%s]" % ('=' * done, ' ' * (50 - done)))
-
-            sys.stdout.write('\n')
-            sys.stdout.flush()
-
-        return filename
-
-    def upload_image(self, url):
-        filename = self.download_file(url)
-
-        url = config.image.server.url
-        response = requests.put(
-            url,
-            params={'access_token': ACCESS_TOKEN},
-            files={'file': open(filename, 'rb')}
-        )
-        if not response.ok:
-            raise Exception(response.json().get('display_message'))
-
-        return response.json().get('url')
-
-    def upload_audio(self, broadcast, item):
-        temp_filename = self.download_file(item['audio_url'])
-        try:
-            audio = AudioSegment.from_file(temp_filename)
-            tags = {
-                'artist': broadcast.title,
-                'album': broadcast.title,
-                'title': item['title'],
-                'comment': 'http://radiople.com',
+        if media:
+            params['mimes'] = media.mime
+            params['extra'] = {
+                'bitrate': media.info.bitrate,
+                'sample_rate': media.info.sample_rate,
+                'length': media.info.length
             }
-            audio.export(temp_filename, format='mp3',
-                         bitrate='128k', tags=tags)
-        except Exception as e:
-            raise Exception("> mp3 변환 도중 에러가 발생했습니다. : ", str(e))
+        else:
+            params['mimes'] = [content['mime']]
 
-        try:
-            mp3 = MP3(temp_filename)
-        except Exception as e:
-            raise Exception("> Mutagen 파일을 열 수 없습니다. : ", str(e))
+        return storage_service.insert(**params)
 
-        storage_service = StorageService()
-        data = storage_service.put_audio(temp_filename)
-
-        if not data:
-            os.remove(temp_filename)
-            raise Exception("> 업로드 도중 에러가 발생했습니다.")
-
-        audio = audio_service.insert(
-            filename=data['filename'],
-            user_id=broadcast.user_id,
-            upload_filename=temp_filename.split('/')[-1],
-            mimes=mp3.mime,
-            size=os.path.getsize(temp_filename),
-            length=mp3.info.length,
-            sample_rate=mp3.info.sample_rate,
-            bitrate=mp3.info.bitrate,
-            url=data['url']
-        )
-
-        os.remove(temp_filename)
-
-        return audio.id
-
-    def create_episode(self, broadcast, item):
-        audio_id = self.upload_audio(broadcast, item)
-
+    def create_episode(self, broadcast_id, storage_id, item):
         episode = episode_service.insert(
-            broadcast_id=broadcast.id,
-            audio_id=audio_id,
+            broadcast_id=broadcast_id,
             title=item['title'],
             subtitle=item['subtitle'],
             air_date=item['air_date'],
+            storage_id=storage_id
         )
 
         sb_episode_service.insert(episode_id=episode.id)
 
         return episode
+
+    def upload_image(self, url):
+        filename = Utils.generate_filename(Utils.get_extension('image/jpeg'))
+        Utils.download_file(url, filename)
+
+        try:
+            response = requests.put(
+                IMAGE_SERVER_URL,
+                params={'access_token': ACCESS_TOKEN},
+                files={'file': open(filename, 'rb')}
+            )
+
+            response.json().get('url')
+        except:
+            return None
 
 
 def run(args):

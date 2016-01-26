@@ -24,7 +24,7 @@ from radiople.model.role import Role
 
 from radiople.service.audio import service as audio_service
 from radiople.service.storage import service as storage_service
-from radiople.service.audio_log import service as audio_log_service
+from radiople.service.storage_log import service as storage_log_service
 from radiople.service.storage import Service as StorageService
 
 from radiople.audio.response.audio import AudioResponse
@@ -118,8 +118,8 @@ OBJECT_TEMP_EXPIRES = 36000
 @json_response()
 @AudioAuthorization(Role.ALL, position=Position.URL)
 def get_object(d, m, y, filename):
-    audio = storage_service.get_by_filename(filename)
-    if not audio:
+    storage_object = storage_service.get_by_filename(filename)
+    if not storage_object:
         abort(404)
 
     full_filename = '/%s/%s/%s/%s' % (d, m, y, filename)
@@ -130,11 +130,11 @@ def get_object(d, m, y, filename):
 
     user_id = 0 if request.auth.is_guest() else request.auth.user_id
 
-    # audio_log_service.insert(
-    #     user_id=user_id,
-    #     service=request.auth.service,
-    #     audio_id=audio.id
-    # )
+    storage_log_service.insert(
+        user_id=user_id,
+        service=request.auth.service,
+        storage_id=storage_object.id
+    )
 
     return {
         'urls': [

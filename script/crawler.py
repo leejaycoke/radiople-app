@@ -108,7 +108,7 @@ class Utils(object):
                 progress += len(data)
                 f.write(data)
                 done = int(50 * progress / content_length)
-                sys.stdout.write("\r> [%s%s]" %
+                sys.stdout.write("\r[%s%s]" %
                                  ('=' * done, ' ' * (50 - done)))
 
             sys.stdout.write('\n')
@@ -119,10 +119,16 @@ class Utils(object):
         return info
 
     @staticmethod
-    def get_extension(mime):
-        extension = mimetypes.guess_extension(mime)
-        if not extension:
-            return '.' + mime.split('/')[-1]
+    def get_extension(mime, url):
+        guess_mime = mimetypes.guess_type(url)
+        if guess_mime:
+            extension = mimetypes.guess_extension(guess_mime[0])
+            if not extension:
+                return '.' + guess_mime[0].split('/')[-1]
+        else:
+            extension = mimetypes.guess_extension(mime)
+            if not extension:
+                return '.' + mime.split('/')[-1]
         return extension
 
     @staticmethod
@@ -132,8 +138,10 @@ class Utils(object):
             if hasattr(media, 'info'):
                 return media
             else:
+                logger.warning("NOT_FOUND_MEDIA_INFO %s", filename)
                 raise Exception("not media file")
         except:
+            logger.warning("NOT_MEDIA_FILE %s", filename)
             return None
 
     @staticmethod
@@ -142,7 +150,7 @@ class Utils(object):
 
     @staticmethod
     def generate_filename(extension):
-        filename = '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex, extension)
+        return '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex, extension)
 
 
 class Broadcast(Schema):
@@ -199,7 +207,7 @@ class Episode(Schema):
             if mime in ACCEPTABLE_MIMES:
                 return {'url': entry.get('href'), 'mime': mime}
             else:
-                logging.warning("> NOT_ACCEPTABLE_CONTENT: ", mime)
+                logging.warning("NOT_ACCEPTABLE_CONTENT: %s", mime)
 
 
 class Episodes(Schema):
@@ -224,7 +232,7 @@ class Crawler(object):
             logger.info("Create broadcast: %s", feed.get('title'))
             broadcast = self.create_broadcast(feed)
 
-        for item in items[:10]:
+        for item in items[:30]:
             if episode_service.exists_title_by_broadcast_id(
                     broadcast.id, item['title']):
                 logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
@@ -266,8 +274,8 @@ class Crawler(object):
         return broadcast
 
     def create_storage(self, user_id, content):
-        filename = '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex,
-                               Utils.get_extension(content['mime']))
+        extension = Utils.get_extension(**content)
+        filename = Utils.generate_filename(extension)
         data = Utils.download_file(content['url'], filename)
 
         conoha_storage = ConohaStorage()
@@ -284,7 +292,7 @@ class Crawler(object):
             'url': result['url']
         }
 
-        if media:
+        if media is not None:
             params['mimes'] = media.mime
             params['extra'] = {
                 'bitrate': media.info.bitrate,
@@ -310,7 +318,8 @@ class Crawler(object):
         return episode
 
     def upload_image(self, url):
-        filename = Utils.generate_filename(Utils.get_extension('image/jpeg'))
+        extension = Utils.get_extension(mime='image/jpeg', url=url)
+        filename = Utils.generate_filename(extension)
         Utils.download_file(url, filename)
 
         try:

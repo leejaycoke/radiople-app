@@ -21,7 +21,6 @@ STORAGE_FULL_URL = config.common.storage.full_url
 STORAGE_URL = config.common.storage.url
 STORAGE_PATH = config.common.storage.path
 
-
 CONTAINER = config.common.storage.container
 
 
@@ -30,7 +29,8 @@ class ConohaStorage(object):
     def __init__(self):
         self.connection = Connection(
             authurl=AUTH_URL, user=USER_NAME, auth_version=AUTH_VERSION,
-            tenant_name=TENANT_NAME, key=KEY
+            tenant_name=TENANT_NAME, key=KEY,
+            os_options={'region_name': 'tyo1'}
         )
 
     def generate_temp_url(self, object_name, seconds=3600, method='GET'):
@@ -52,7 +52,6 @@ class ConohaStorage(object):
                 container,
                 obj=filename,
                 contents=open(contents, 'rb'),
-                content_type='audio/mpeg'
             )
         except Exception as e:
             print("> failed to put_object: %s" % str(e))

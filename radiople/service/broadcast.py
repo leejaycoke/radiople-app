@@ -48,6 +48,10 @@ class BroadcastService(Service):
             .filter(Subscription.broadcast_id == self.broadcast_id) \
             .filter(Subscription.user_id == user_id).as_scalar()
 
+    def get_all_by_user_id(self, user_id):
+        return Session.query(self.__model__) \
+            .filter(Broadcast.user_id == user_id).all()
+
 
 class ApiBroadcastService(BroadcastService):
 

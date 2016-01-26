@@ -94,7 +94,7 @@ class ApiEpisodeService(EpisodeService):
     def get_list(self, broadcast_id, paging):
         query = Session.query(self.__model__) \
             .filter(Episode.broadcast_id == broadcast_id) \
-            .options(joinedload('*'))
+            .options(joinedload('*', innerjoin=True))
 
         total_count = query.with_entities(
             func.count(Episode.broadcast_id)).scalar()

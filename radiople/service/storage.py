@@ -21,3 +21,4 @@ class ConsoleStorageService(StorageService):
 
 
 service = StorageService()
+console_service = ConsoleStorageService()

@@ -9,7 +9,6 @@ from wtforms.fields import TextAreaField
 from wtforms.validators import DataRequired
 from wtforms.validators import Length
 from wtforms.validators import Optional
-from wtforms.validators import URL
 from radiople.libs.validators import Date
 
 
@@ -25,8 +24,8 @@ class EpisodeCreateForm(BaseForm):
         Date(date_format='%Y-%m-%d %H:%M', message=u"옳바르지 않은 날짜형식입니다.")
     ])
 
-    audio_id = IntegerField(u"음원", [
-        DataRequired(message=u"음원이 업로드되지 않았습니다."),
+    storage_id = IntegerField(u"파일", [
+        DataRequired(message=u"파일 혹은 음원이 업로드되지 않았습니다."),
     ])
 
     subtitle = StringField(u"에피소드 부제목", [
@@ -47,8 +46,8 @@ class EpisodeEditForm(BaseForm):
         Length(max=50, message=u"에피소드 제목은 50 글자까지 입력할 수 있습니다.")
     ])
 
-    audio_id = IntegerField(u"음원", [
-        DataRequired(message=u"음원이 업로드되지 않았습니다."),
+    storage_id = IntegerField(u"파일", [
+        DataRequired(message=u"파일 혹은 음원이 업로드되지 않았습니다."),
     ])
 
     air_date = StringField(u"방송 날짜", [

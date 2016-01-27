@@ -19,7 +19,7 @@ from radiople.libs.permission import ConsoleAuthorization
 
 from radiople.service.episode import console_service as episode_service
 from radiople.service.sb_episode import console_service as sb_episode_service
-from radiople.service.audio import console_service as audio_service
+from radiople.service.storage import console_service as storage_service
 
 from radiople.exceptions import BadRequest
 from radiople.exceptions import NotFound
@@ -84,22 +84,22 @@ def post():
              for g in request.form.getlist('guest[]') if g.strip() != '']
 
     data = {
+        'storage_id': form.data['storage_id'],
         'broadcast_id': request.auth.broadcast_id,
         'title': form.data['title'],
         'subtitle': form.data['subtitle'],
         'guest': guest,
         'description': form.data['description'],
         'air_date': form.data['air_date'],
-        'audio_id': form.data['audio_id'],
         'description': form.data['description']
     }
 
-    audio = audio_service.get(form.data['audio_id'])
-    if not audio:
-        raise NotFound("등록되지 않은 음원입니다.")
+    storage_id = storage_service.get(form.data['storage_id'])
+    if not storage_id:
+        raise NotFound("음원, 혹은 파일이 등록되지 않았습니다.")
 
-    if audio.user_id != request.auth.user_id:
-        raise AccessDenied("접근할수 없는 음원입니다.")
+    if storage_id.user_id != request.auth.user_id:
+        raise AccessDenied("접근할수 없는 파일입니다.")
 
     episode = episode_service.insert(**data)
     sb_episode_service.insert(episode_id=episode.id)
@@ -130,16 +130,16 @@ def edit(episode_id):
         'guest': guest,
         'description': form.data['description'],
         'air_date': form.data['air_date'],
-        'audio_id': form.data['audio_id'],
+        'storage_id': form.data['storage_id'],
         'description': form.data['description']
     }
 
-    audio = audio_service.get(form.data['audio_id'])
-    if not audio:
-        raise NotFound("등록되지 않은 오디오입니다.")
+    storage = storage_service.get(form.data['storage_id'])
+    if not storage:
+        raise NotFound("등록되지 않은 파일 혹은 음원입니다.")
 
-    if audio.user_id != request.auth.user_id:
-        raise AccessDenied
+    if storage.user_id != request.auth.user_id:
+        raise AccessDenied("접근할수 없는 파일입니다.")
 
     episode_service.update(current, **data)
 
@@ -157,5 +157,5 @@ def delete(episode_id):
 
     episode_service.delete(current)  # delete cascade sb_episode ...
 
-    audio = audio_service.get(current.audio.id)
-    audio_service.delete(audio)  # delete cascade episode
+    storage = storage_service.get(current.storage_id)
+    storage_service.delete(storage)  # delete cascade episode

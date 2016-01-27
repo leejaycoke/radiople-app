@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import mutagen
+
 from radiople.db import Session
 from radiople.service import Service
 

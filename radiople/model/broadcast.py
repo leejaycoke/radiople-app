@@ -3,7 +3,6 @@
 from flask import request
 
 from radiople.db import Base
-from radiople.db import Session
 
 from sqlalchemy import Column
 from sqlalchemy import Integer
@@ -13,9 +12,6 @@ from sqlalchemy import Date
 from sqlalchemy import DateTime
 from sqlalchemy import Text
 from sqlalchemy import ForeignKey
-from sqlalchemy import select
-from sqlalchemy import exists
-from sqlalchemy import and_
 
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import object_session
@@ -26,7 +22,6 @@ from radiople.model.common import TimeStampMixin
 from radiople.model.category import Category
 from radiople.model.subscription import Subscription
 from radiople.model.rating import Rating
-from radiople.model.podbbang import Podbbang
 
 
 BROADCAST_ID_SEQ = Sequence('broadcast_id_seq')
@@ -38,6 +33,7 @@ class Broadcast(Base, TimeStampMixin):
 
     id = Column(Integer, BROADCAST_ID_SEQ, primary_key=True,
                 server_default=BROADCAST_ID_SEQ.next_value())
+    user_id = Column(Integer, ForeignKey('user.id', ondelete='CASCADE'))
     title = Column(String, nullable=False, index=True)
     subtitle = Column(String, index=True)
     casting = Column(ARRAY(String), nullable=False)
@@ -49,6 +45,7 @@ class Broadcast(Base, TimeStampMixin):
     link = Column(String)
     category_id = Column(ForeignKey(Category.id), index=True)
     description = Column(Text)
+    feed_url = Column(String, index=True)
     scoreboard = relationship('SbBroadcast', uselist=False, cascade="delete")
     category = relationship('Category', uselist=False)
 
@@ -57,9 +54,8 @@ class Broadcast(Base, TimeStampMixin):
     @property
     def activity(self):
         if request.auth.is_guest:
-            return None
-
-        if self._activity is None:
+            self._activity = {}
+        elif self._activity is None:
             activity = object_session(self).query(Broadcast) \
                 .with_entities(
                     self._is_subscriber_as_scalar,

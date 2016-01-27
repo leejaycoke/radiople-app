@@ -1,7 +1,7 @@
 __all__ = [
     'agreement',
-    'audio',
-    'audio_log',
+    'storage',
+    'storage_log',
     'broadcast',
     'cache_episode_like',
     'category',

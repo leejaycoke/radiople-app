@@ -10,3 +10,4 @@ class Audio(Schema):
     display_length = fields.String()
     display_size = fields.String()
     length = fields.Integer()
+    url = fields.Url()

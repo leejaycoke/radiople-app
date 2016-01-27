@@ -37,14 +37,14 @@ from radiople.exceptions import Unauthorized
 
 @api_v1.route('/broadcast', methods=['GET'])
 @ApiAuthorization(Role.ALL)
-@json_response(serializer=BroadcastListResponse)
+@json_response(BroadcastListResponse)
 def broadcast_list_get():
     return
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>', methods=['GET'])
 @ApiAuthorization(Role.ALL)
-@json_response(serializer=BroadcastResponse)
+@json_response(BroadcastResponse)
 def broadcast_get(broadcast_id):
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
     if not broadcast:
@@ -70,7 +70,7 @@ def broadcast_episode_get(broadcast_id):
 
 @api_v1.route('/broadcast/<int:broadcast_id>/subscription', methods=['PUT'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
-@json_response()
+@json_response(BroadcastResponse)
 def subscription_put(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
         raise NotFound("존재하지 않는 방송입니다.")
@@ -87,12 +87,12 @@ def subscription_put(broadcast_id):
 
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
 
-    return BroadcastResponse(broadcast)
+    return broadcast
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/subscription', methods=['DELETE'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
-@json_response()
+@json_response(BroadcastResponse)
 def subscription_delete(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
         raise NotFound("존재하지 않는 방송입니다.")
@@ -108,19 +108,19 @@ def subscription_delete(broadcast_id):
 
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
 
-    return BroadcastResponse(broadcast)
+    return broadcast
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment', methods=['GET'])
 @ApiAuthorization(Role.ALL)
-@json_response()
+@json_response(CommentListResponse)
 def comment_get(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
         raise NotFound("존재하지 않는 방송입니다.")
 
     paging = get_paging()
     item = comment_service.get_list(broadcast_id, paging)
-    return CommentListResponse(item)
+    return item
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment/<int:comment_id>/report', methods=['PUT'])
@@ -140,7 +140,7 @@ def comment_report_put(broadcast_id, comment_id):
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment', methods=['POST'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
-@json_response()
+@json_response(CommentResponse)
 def comment_post(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
         raise NotFound("존재하지 않는 방송입니다.")
@@ -157,7 +157,7 @@ def comment_post(broadcast_id):
 
     sb_broadcast_service.refresh_comment_count(broadcast_id)
 
-    return CommentResponse(comment)
+    return comment
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment/<int:comment_id>', methods=['DELETE'])
@@ -187,7 +187,7 @@ POINT_RANGE = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
 
 @api_v1.route('/broadcast/<int:broadcast_id>/rating', methods=['PUT'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
-@json_response()
+@json_response(BroadcastResponse)
 def rating_put(broadcast_id):
     point = request.form.get('point')
     if not point:
@@ -221,12 +221,12 @@ def rating_put(broadcast_id):
 
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
 
-    return BroadcastResponse(broadcast)
+    return broadcast
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/rating', methods=['DELETE'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST])
-@json_response()
+@json_response(BroadcastResponse)
 def rating_delete(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
         raise NotFound("존재하지 않는 방송입니다.")
@@ -243,4 +243,4 @@ def rating_delete(broadcast_id):
 
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
 
-    return BroadcastResponse(broadcast)
+    return broadcast

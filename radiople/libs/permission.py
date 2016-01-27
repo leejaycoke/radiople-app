@@ -195,7 +195,7 @@ class ConsoleAuthorization(Authorization):
 
     @property
     def default_roles(self):
-        return [Role.DJ]
+        return [Role.ADMIN, Role.DJ]
 
     def success_execute(self, auth):
         setattr(request, 'auth', auth)

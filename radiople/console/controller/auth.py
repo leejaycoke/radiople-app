@@ -17,8 +17,8 @@ from radiople.model.role import Role
 from radiople.service.crypto import password_service
 from radiople.service.crypto import access_token_service
 from radiople.service.user_auth import console_service as user_auth_service
-from radiople.service.user_broadcast import console_service as user_broadcast_service
 from radiople.service.user_token import console_service as user_token_service
+from radiople.service.broadcast import console_service as broadcast_service
 
 from radiople.exceptions import NotFound
 from radiople.exceptions import BadRequest
@@ -29,7 +29,7 @@ from radiople.console.form.auth import AuthLoginForm
 
 
 @bp_auth.route('/signin.html', methods=['GET'])
-@ConsoleAuthorization(Role.GUEST, Role.DJ)
+@ConsoleAuthorization(Role.ALL)
 @view_response('auth/signin.html')
 def signin_html():
     pass
@@ -50,12 +50,11 @@ def signin():
             user_auth.password, user_auth.salt, form.data['password']):
         raise NotFound("이메일 혹은 비밀번호가 옳바르지 않습니다.")
 
-    user_broadcast = user_broadcast_service.get_by_user_id(user_auth.user_id)
-    if not user_broadcast:
-        raise NotFound("방송국 신청 사용자가 아닙니다.")
+    broadcasts = broadcast_service.get_all_by_user_id(user_auth.user_id)
+    broadcast_ids = [broadcast.id for broadcast in broadcasts]
 
     access_token, expires_at, hashed = access_token_service.issue(
-        user_id=user_auth.user_id, broadcast_id=user_broadcast.broadcast_id,
+        user_id=user_auth.user_id, broadcast_ids=broadcast_ids,
         service=Service.CONSOLE)
 
     user_token_service.insert(

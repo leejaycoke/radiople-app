@@ -20,7 +20,7 @@ from sqlalchemy.orm import object_session
 from sqlalchemy.dialects.postgresql import ARRAY
 
 from radiople.model.broadcast import Broadcast
-from radiople.model.audio import Audio
+from radiople.model.storage import Storage
 from radiople.model.history import History
 from radiople.model.sb_episode import SbEpisode
 from radiople.model.common import TimeStampMixin
@@ -38,7 +38,7 @@ class Episode(Base, TimeStampMixin):
                 server_default=EPISODE_ID_SEQ.next_value())
     broadcast_id = Column(ForeignKey(
         'broadcast.id', ondelete='CASCADE'), nullable=False)
-    audio_id = Column(ForeignKey('audio.id'), nullable=False)
+    storage_id = Column(ForeignKey('storage.id'))
     title = Column(String, index=True)
     subtitle = Column(String, index=True)
     guest = Column(ARRAY(String))
@@ -48,8 +48,8 @@ class Episode(Base, TimeStampMixin):
                       index=True)
     description = Column(Text)
     scoreboard = relationship(SbEpisode, uselist=False, cascade="delete")
-    audio = relationship(Audio, uselist=False)
     broadcast = relationship(Broadcast, uselist=False)
+    storage = relationship(Storage, uselist=False)
 
     __table_args__ = (
         Index('ix_episode_air_date_desc', air_date.desc()),
@@ -61,9 +61,8 @@ class Episode(Base, TimeStampMixin):
     @property
     def activity(self):
         if request.auth.is_guest:
-            return None
-
-        if self._activity is None:
+            self._activity = {}
+        elif self._activity is None:
             activity = object_session(self).query(Episode) \
                 .with_entities(
                     self._is_like_as_scalar,

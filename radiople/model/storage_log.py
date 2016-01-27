@@ -11,7 +11,7 @@ from sqlalchemy import ForeignKey
 from radiople.model.common import CreatedAt
 
 
-AUDIO_LOG_ID_SEQ = Sequence('audio_log_id_seq')
+STORAGE_ID_SEQ = Sequence('storage_log_id_seq')
 
 
 class Service(object):
@@ -21,14 +21,14 @@ class Service(object):
     WEB = 'web'
 
 
-class AudioLog(Base, CreatedAt):
+class StorageLog(Base, CreatedAt):
 
-    __tablename__ = 'audio_log'
+    __tablename__ = 'storage_log'
 
-    id = Column(Integer, AUDIO_LOG_ID_SEQ, primary_key=True,
-                server_default=AUDIO_LOG_ID_SEQ.next_value())
+    id = Column(Integer, STORAGE_ID_SEQ, primary_key=True,
+                server_default=STORAGE_ID_SEQ.next_value())
     service = Column(String, nullable=False, default=Service.API,
                      server_default=Service.API)
-    audio_id = Column(ForeignKey('audio.id', ondelete='CASCADE'),
-                      nullable=False, index=True)
+    storage_id = Column(ForeignKey('storage.id', ondelete='CASCADE'),
+                        nullable=False, index=True)
     user_id = Column(Integer, nullable=False, default=0, server_default="0")

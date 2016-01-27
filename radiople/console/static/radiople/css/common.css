@@ -122,8 +122,9 @@ body {
     margin-right: 6px;
 }
 
-.main .page-header {
-    margin-top: 0;
+.page-header {
+    margin: 0;
+    margin-bottom: 10px;
 }
 
 .placeholders {
@@ -158,5 +159,17 @@ important {
         padding-left: 32px;
         padding-right: 32px;
         padding-bottom: 32px;
+    }
+}
+
+@media(max-width:767px) {
+    h1 {
+        font-size: 24px;
+    }
+    .main {
+        padding-top: 10px;
+        padding-left: 25px;
+        padding-right: 25px;
+        padding-bottom: 25px;
     }
 }

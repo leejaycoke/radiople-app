@@ -53,7 +53,7 @@ def edit_html():
 def get_episode_list():
     paging = get_paging()
     item, total_count = episode_service.get_list(
-        request.auth.broadcast_id, paging)
+        request.auth.broadcast_ids[0], paging)
 
     response = make_paging(item, total_count, paging.page)
 

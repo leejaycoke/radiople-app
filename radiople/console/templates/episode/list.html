@@ -1,6 +1,6 @@
 {% extends 'layout/default.html' %} {% block body %}
 <div ng-controller="ListController">
-    <div class="row hidden-xs">
+    <div class="row">
         <div class="page-header">
             <h1>에피소드 목록</h1>
         </div>
@@ -15,7 +15,7 @@
                 <table class="table table-bordered table-hover">
                     <thead>
                         <th class="col-sm-7">제목</th>
-                        <th class="col-sm-3">방송일</th>
+                        <th class="col-sm-2">방송일</th>
                         <th class="col-sm-1">재생길이</th>
                         <th class="col-sm-1">좋아요</th>
                     </thead>
@@ -26,7 +26,7 @@
                                 <div ng-show="episode.subtitle"><small>{[ episode.subtitle ]}</small></div>
                             </td>
                             <td>{[ episode.air_date|date:'yyyy-MM-dd HH:mm' ]}</td>
-                            <td>{[ episode.audio.display_length ]}</td>
+                            <td>{[ episode.storage.extra.display_length ]}</td>
                             <td>{[ episode.scoreboard.like_count ]}</td>
                         </tr>
                     </tbody>

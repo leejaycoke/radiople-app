@@ -2,6 +2,7 @@
 
 import sys
 import uuid
+import random
 import logging
 import requests
 
@@ -11,6 +12,7 @@ import feedparser
 
 from bs4 import BeautifulSoup
 
+from datetime import datetime
 from datetime import timedelta
 from dateutil import parser
 
@@ -126,6 +128,10 @@ class Utils(object):
     @staticmethod
     def generate_filename(extension):
         return '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex, extension)
+
+    @staticmethod
+    def get_random_date(before_days=365):
+        return datetime.now() - timedelta(days=random.randint(0, 365))
 
 
 class Broadcast(Schema):
@@ -255,7 +261,9 @@ class Crawler(object):
 
         conoha_storage = ConohaStorage()
         # upload filename, saving filename
-        result = conoha_storage.put_object(filename, data['filename'])
+        date = Utils.get_random_date()
+        result = conoha_storage.put_object(
+            filename, data['filename'], date=date)
 
         media = Utils.get_media(filename)
 
@@ -311,7 +319,7 @@ class Crawler(object):
             )
 
             return response.json().get('url')
-        except:
+        except Exception as e:
             return None
 
 

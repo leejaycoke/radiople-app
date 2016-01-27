@@ -43,8 +43,9 @@ class ConohaStorage(object):
 
         return STORAGE_URL + signed_path
 
-    def put_object(self, contents, filename):
-        date_folder = datetime.now().strftime('/%d/%m/%Y')
+    def put_object(self, contents, filename, date=None):
+        date = date or datetime.now()
+        date_folder = date.strftime('/%d/%m/%Y')
         container = CONTAINER + date_folder
 
         try:

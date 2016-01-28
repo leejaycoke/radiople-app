@@ -19,6 +19,11 @@
     <div class="container-fluid content-wrapper">
         <div class="row content">
             <div class="col-sm-3 col-md-2 sidebar hidden-xs">
+                <div id="broadcast-pannel">
+                    <label>방송 선택</label>
+                    <select class="form-control" ng-options="broadcast.id as broadcast.title for broadcast in broadcasts" ng-model="selectedBroadcastId" ng-change="broadcastChanged();">
+                    </select>
+                </div>
                 <ul class="nav nav-sidebar">
                     <li><a href="{{ url_for('bp_dashboard.index_html') }}"><i class="glyphicon glyphicon-dashboard"></i> 대시보드 <span class="sr-only">(current)</span></a></li>
                     <li><a href="{{ url_for('bp_broadcast.edit_html') }}"><i class="glyphicon glyphicon-equalizer"></i> 방송 관리</a></li>

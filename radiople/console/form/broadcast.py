@@ -3,16 +3,13 @@
 from radiople.libs.form import BaseForm
 
 from wtforms.validators import DataRequired
-from wtforms.validators import InputRequired
 from wtforms.validators import Length
 from wtforms.validators import Optional
 from wtforms.validators import URL
-from radiople.libs.validators import Date
 
 from wtforms.fields import StringField
 from wtforms.fields import IntegerField
 from wtforms.fields import TextAreaField
-from wtforms.fields import FieldList
 
 
 class BroadcastCreateForm(BaseForm):
@@ -24,18 +21,12 @@ class BroadcastCreateForm(BaseForm):
 
     subtitle = StringField(u"부제목", [
         Optional(),
-        Length(min=2, max=20, message=u"부제목을 2~20 글자로 입력해주세요.")
+        Length(min=2, max=50, message=u"부제목을 2~50 글자로 입력해주세요.")
     ])
 
     category_id = IntegerField(u"카테고리", [
         DataRequired(message=u"카테고리를 입력해주세요.")
     ])
-
-    # casting = FieldList(
-    #     StringField(validators=[
-    #                 InputRequired(message=u"고정 출연진을 입력해주세요")]),
-    #     min_entries=1, max_entries=10
-    # )
 
     description = TextAreaField(u"방송 설명", [
         Optional(),

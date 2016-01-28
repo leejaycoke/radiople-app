@@ -6,8 +6,7 @@ from marshmallow import fields
 from radiople.api.response.common import PagingResponse
 
 from radiople.api.response.v1.broadcast import Broadcast
-from radiople.api.response.v1.audio import Audio
-from radiople.api.response.v1.history import History
+from radiople.api.response.v1.storage import Storage
 
 
 class EpisodeScoreboard(Schema):
@@ -32,7 +31,7 @@ class Episode(Schema):
     content = fields.String(default=None)
     air_date = fields.LocalDateTime()
     broadcast = fields.Nested(Broadcast)
-    audio = fields.Nested(Audio)
+    storage = fields.Nested(Storage)
     scoreboard = fields.Nested(EpisodeScoreboard)
     activity = fields.Nested(EpisodeActivity)
 

@@ -4,10 +4,9 @@ from marshmallow import Schema
 from marshmallow import fields
 
 
-class Audio(Schema):
+class Storage(Schema):
 
     filename = fields.String()
-    display_length = fields.String()
-    display_size = fields.String()
-    length = fields.Integer()
+    extra = fields.Field()
+    mimes = fields.List(fields.String())
     url = fields.Url()

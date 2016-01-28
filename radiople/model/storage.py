@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from urllib import parse
-
 from hurry.filesize import size
 from hurry.filesize import alternative
 
 from radiople.db import Base
-from radiople.config import config
 from radiople.model.common import TimeStampMixin
 
 from sqlalchemy import Column
@@ -25,6 +22,15 @@ ACCEPTABLE_MIMES = ['audio/mp3', 'audio/mpeg', 'application/octet-stream',
                     'audio/mpeg3', 'video/mp4', 'application/pdf']
 
 
+class FileType(object):
+
+    AUDIO = 'audio'
+    VIDEO = 'video'
+    PDF = 'pdf'
+    PPT = 'ppt'
+    DOC = 'doc'
+
+
 class Storage(Base, TimeStampMixin):
 
     __tablename__ = 'storage'
@@ -37,48 +43,42 @@ class Storage(Base, TimeStampMixin):
     size = Column(BigInteger, nullable=False)
     mimes = Column(ARRAY(String), nullable=False)
     url = Column(String, nullable=False)
-    extra = Column(MutableDict.as_mutable(JSONB))
+    _extra = Column('extra', MutableDict.as_mutable(JSONB))
 
-    # _display_length = None
-    # _display_bitrate = None
-    # _display_sample_rate = None
-    # _display_size = None
-    # _container = None
+    @property
+    def extra(self):
+        if not self._extra:
+            return self._extra
+        self._extra.update({
+            'display_length': self.display_length,
+            'display_bitrate': self.display_bitrate,
+            'display_sample_rate': self.display_sample_rate,
+            'display_size': self.display_size
+        })
+        return self._extra
 
-    # @property
-    # def display_length(self):
-    #     if self._display_length is None:
-    #         h, remainder = divmod(self.length, 3600)
-    #         m, s = divmod(remainder, 60)
-    #         self._display_length = '%02d:%02d:%02d' % (h, m, s)
-    #     return self._display_length
+    @extra.setter
+    def extra(self, value):
+        self._extra = value
 
-    # @property
-    # def display_bitrate(self):
-    #     if self._display_bitrate is None:
-    #         self._bitrate = '%dKbps' % (int(self.bitrate / 1000))
-    #     return self._bitrate
+    @property
+    def display_length(self):
+        h, remainder = divmod(self._extra.get('length'), 3600)
+        m, s = divmod(remainder, 60)
+        return '%02d:%02d:%02d' % (h, m, s)
 
-    # @property
-    # def display_sample_rate(self):
-    #     if self._display_sample_rate is None:
-    #         self._sample_rate = '%dHz' % (self.sample_rate)
-    #     return self._sample_rate
+    @property
+    def display_bitrate(self):
+        return '%dKbps' % (int(self._extra.get('bitrate') / 1000))
 
-    # @property
-    # def display_size(self):
-    #     if self._display_size is None:
-    #         self._display_size = size(self.size, system=alternative)
-    #     return self._display_size
+    @property
+    def display_sample_rate(self):
+        return '%dHz' % (self._extra.get('sample_rate'))
 
-    # @property
-    # def extension(self):
-    #     return self.filename.rsplit('.', 1)[1]
+    @property
+    def display_size(self):
+        return size(self.size, system=alternative)
 
-    # @property
-    # def container(self):
-    #     if self._container is None:
-    #         p = parse.urlparse(self.url)
-    #         self._container = AUDIO_CONTAINER + \
-    #             p.path.replace(self.filename, '')
-    #     return self._container
+    @property
+    def extension(self):
+        return self.filename.rsplit('.', 1)[1]

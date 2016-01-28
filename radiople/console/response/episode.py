@@ -5,7 +5,7 @@ from marshmallow import fields
 
 from radiople.console.response.common import PagingResponse
 
-from radiople.console.response.audio import Audio
+from radiople.console.response.storage import Storage
 
 
 class EpisodeScoreboard(Schema):
@@ -21,11 +21,12 @@ class Episode(Schema):
     broadcast_id = fields.Integer()
     title = fields.String(default=None)
     subtitle = fields.String(default=None)
-    audio_id = fields.Integer()
+    storage_id = fields.Integer()
     description = fields.String(default=None)
     air_date = fields.LocalDateTime()
-    audio = fields.Nested(Audio)
+    storage = fields.Nested(Storage)
     guest = fields.List(fields.String())
+    scoreboard = fields.Nested(EpisodeScoreboard)
 
 
 class EpisodeResponse(Episode):

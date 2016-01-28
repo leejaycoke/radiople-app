@@ -9,6 +9,8 @@ import mimetypes
 import mutagen
 import feedparser
 
+from urllib.parse import urlparse
+
 from bs4 import BeautifulSoup
 
 from datetime import timedelta
@@ -95,6 +97,9 @@ class Utils(object):
 
     @staticmethod
     def get_extension(mime, url):
+        parsed = urlparse(url)
+        url = url.replace("?" + parsed.query, '')
+
         guess_mime = mimetypes.guess_type(url)
         if guess_mime:
             extension = mimetypes.guess_extension(guess_mime[0])
@@ -207,7 +212,7 @@ class Crawler(object):
             logger.info("Create broadcast: %s", feed.get('title'))
             broadcast = self.create_broadcast(feed)
 
-        for item in items[:30]:
+        for item in items:
             if episode_service.exists_title_by_broadcast_id(
                     broadcast.id, item['title']):
                 logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])

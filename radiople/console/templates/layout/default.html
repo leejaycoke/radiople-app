@@ -1,6 +1,28 @@
 <!DOCTYPE html>
 <html lang="ko" ng-app="RadiopleApplication">
 {% include 'dist/head.html' %}
+<script>
+app.controller('BaseController', function($scope, requestService, $httpParamSerializerJQLike) {
+    $scope.broadcasts = [
+        {% for broadcast in session.broadcasts %}
+        {'id': {{ broadcast.id }}, 'title': '{{ broadcast.title|safe }}'},
+        {% endfor %}
+    ];
+
+    $scope.selectedBroadcastId = {{ session.broadcast_id }};
+
+    $scope.broadcastChanged = function() {
+        requestService.put('/auth/current-broadcast', {'broadcast_id': $scope.selectedBroadcastId}, {
+            success: function(response) {
+                location.reload();
+            },
+            error: function(error) {
+
+            }
+        })
+    }
+});
+</script>
 
 <body ng-controller="BaseController">
     <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
@@ -19,6 +41,10 @@
     <div class="container-fluid content-wrapper">
         <div class="row content">
             <div class="col-sm-3 col-md-2 sidebar hidden-xs">
+                <div id="broadcast-pannel">
+                    <select class="form-control" ng-options="b.id as b.title for b in broadcasts" ng-model="selectedBroadcastId" ng-change="broadcastChanged();">
+                    </select>
+                </div>
                 <ul class="nav nav-sidebar">
                     <li><a href="{{ url_for('bp_dashboard.index_html') }}"><i class="glyphicon glyphicon-dashboard"></i> 대시보드 <span class="sr-only">(current)</span></a></li>
                     <li><a href="{{ url_for('bp_broadcast.edit_html') }}"><i class="glyphicon glyphicon-equalizer"></i> 방송 관리</a></li>

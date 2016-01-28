@@ -203,6 +203,7 @@ class ConsoleAuthorization(Authorization):
     def fail_execute(self, e):
         if request.is_xhr:
             raise e
+        print(e)
         return redirect('/auth/signin.html')
 
 

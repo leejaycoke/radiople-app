@@ -15,6 +15,7 @@ from radiople.exceptions import RadiopleException
 app = Flask(__name__)
 
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
+app.config['SECRET_KEY'] = config.console.session.secret_key
 app.debug = config.common.flask.debug
 
 app.jinja_env.filters['append_size'] = append_size

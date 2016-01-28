@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from flask import request
+from flask import session
 
 from radiople.console.controller import bp_broadcast
 
@@ -28,7 +29,7 @@ def edit_html():
 @ConsoleAuthorization()
 @json_response(BroadcastResponse)
 def json():
-    broadcast = broadcast_service.get(request.auth.broadcast_id)
+    broadcast = broadcast_service.get(session['broadcast_id'])
     return broadcast
 
 
@@ -60,6 +61,6 @@ def edit():
         'cover_image': form.data['cover_image']
     }
 
-    current = broadcast_service.get(request.auth.broadcast_id)
+    current = broadcast_service.get(session['broadcast_id'])
 
     broadcast_service.update(current, **data)

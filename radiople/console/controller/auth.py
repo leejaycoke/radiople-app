@@ -3,6 +3,7 @@
 from flask import request
 from flask import redirect
 from flask import url_for
+from flask import session
 from flask import make_response
 
 from radiople.libs.response import view_response
@@ -22,6 +23,7 @@ from radiople.service.broadcast import console_service as broadcast_service
 
 from radiople.exceptions import NotFound
 from radiople.exceptions import BadRequest
+from radiople.exceptions import AccessDenied
 
 from radiople.console.controller import bp_auth
 
@@ -67,14 +69,23 @@ def signin():
     response = make_response()
     response.set_cookie('access_token', access_token)
 
+    session['broadcasts'] = []
+    session['broadcast_id'] = broadcasts[0].id
+
+    for broadcast in broadcasts:
+        session['broadcasts'].append(
+            {'id': broadcast.id, 'title': broadcast.title}
+        )
+
     return response
 
 
 @bp_auth.route('/signout', methods=['GET'])
-@ConsoleAuthorization(Role.DJ)
+@ConsoleAuthorization(Role.ADMIN, Role.DJ)
 def signout():
     response = make_response(redirect(url_for('bp_auth.signin_html')))
     response.set_cookie('access_token', '')
+    session.clear()
 
     hashed = access_token_service.hash(request.auth.access_token)
 
@@ -87,3 +98,14 @@ def signout():
     user_token_service.delete(user_token)
 
     return response
+
+
+@bp_auth.route('/current-broadcast', methods=['PUT'])
+@ConsoleAuthorization(Role.ADMIN, Role.DJ)
+@json_response()
+def change_current_broadcast():
+    broadcast_id = int(request.form.get('broadcast_id'))
+    if broadcast_id not in request.auth.broadcast_ids:
+        raise AccessDenied
+
+    session['broadcast_id'] = broadcast_id

@@ -1,5 +1,5 @@
 app.controller('ViewController', function($scope, $httpParamSerializerJQLike, cookieService, requestService) {
-    requestService.get('/broadcast', null, {
+    requestService.get('/broadcast/' + cookieService.get('broadcast_id'), null, {
         success: function(response) {
             $scope.broadcast = response;
         }

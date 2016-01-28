@@ -77,6 +77,7 @@ class Authorization(metaclass=ABCMeta):
         def decorator(*args, **kwargs):
             try:
                 auth = self.validate(*args, **kwargs)
+                self.service_validate(auth)
             except Exception as e:
                 return self.fail_execute(e)
 
@@ -122,6 +123,10 @@ class Authorization(metaclass=ABCMeta):
 
     @abstractproperty
     def default_roles(self):
+        raise NotImplemented
+
+    @abstractmethod
+    def service_validate(self):
         raise NotImplemented
 
     def validate(self, *args, **kwargs):
@@ -172,6 +177,9 @@ class ApiAuthorization(Authorization):
     def default_roles(self):
         return Role.ALL
 
+    def service_validate(self, auth):
+        pass
+
     def success_execute(self, auth):
         setattr(request, 'auth', auth)
 
@@ -197,14 +205,21 @@ class ConsoleAuthorization(Authorization):
     def default_roles(self):
         return [Role.ADMIN, Role.DJ]
 
+    def service_validate(self, auth):
+        if auth.is_guest():
+            return
+
+        broadcast_id = int(request.cookies.get('broadcast_id'))
+        if broadcast_id and broadcast_id not in auth.broadcast_ids:
+            raise AccessDenied
+
     def success_execute(self, auth):
         setattr(request, 'auth', auth)
 
     def fail_execute(self, e):
         if request.is_xhr:
             raise e
-        print(e)
-        return redirect('/auth/signin.html')
+        return redirect('/auth/signout')
 
 
 class AudioAuthorization(Authorization):
@@ -223,7 +238,10 @@ class AudioAuthorization(Authorization):
 
     @property
     def default_roles(self):
-        return [Role.DJ]
+        return [Role.ADMIN, Role.DJ]
+
+    def service_validate(self, auth):
+        pass
 
     def success_execute(self, auth):
         setattr(request, 'auth', auth)
@@ -249,6 +267,9 @@ class ImageAuthorization(Authorization):
     @property
     def default_roles(self):
         return Role.ALL
+
+    def service_validate(self, auth):
+        pass
 
     def success_execute(self, auth):
         setattr(request, 'auth', auth)

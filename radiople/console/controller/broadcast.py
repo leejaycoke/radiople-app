@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from flask import request
-from flask import session
 
 from radiople.console.controller import bp_broadcast
 
@@ -16,6 +15,7 @@ from radiople.service.broadcast import console_service as broadcast_service
 
 from radiople.console.form.broadcast import BroadcastCreateForm
 from radiople.console.response.broadcast import BroadcastResponse
+from radiople.console.response.broadcast import BroadcastsResponse
 
 
 @bp_broadcast.route('/edit.html', methods=['GET'])
@@ -27,9 +27,17 @@ def edit_html():
 
 @bp_broadcast.route('', methods=['GET'])
 @ConsoleAuthorization()
+@json_response(BroadcastsResponse)
+def get_broadcasts_json():
+    broadcasts = broadcast_service.get_all_by_user_id(request.auth.user_id)
+    return {'broadcasts': broadcasts}
+
+
+@bp_broadcast.route('/<int:broadcast_id>', methods=['GET'])
+@ConsoleAuthorization()
 @json_response(BroadcastResponse)
-def json():
-    broadcast = broadcast_service.get(session['broadcast_id'])
+def get_broadcast_json(broadcast_id):
+    broadcast = broadcast_service.get(request.cookies.get('broadcast_id'))
     return broadcast
 
 
@@ -61,6 +69,6 @@ def edit():
         'cover_image': form.data['cover_image']
     }
 
-    current = broadcast_service.get(session['broadcast_id'])
+    current = broadcast_service.get(int(request.cookies.get('broadcast_id')))
 
     broadcast_service.update(current, **data)

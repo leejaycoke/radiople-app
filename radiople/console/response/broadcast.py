@@ -36,3 +36,8 @@ class Broadcast(Schema):
 class BroadcastResponse(Broadcast):
 
     pass
+
+
+class BroadcastsResponse(Schema):
+
+    broadcasts = fields.Nested(Broadcast, many=True)

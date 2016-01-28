@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+import json
+
+from base64 import b64encode
+
 from flask import request
 from flask import redirect
 from flask import url_for
@@ -38,6 +42,7 @@ def signin_html():
 
 
 @bp_auth.route('/signin', methods=['POST'])
+@ConsoleAuthorization(Role.ALL)
 @json_response()
 def signin():
     form = AuthLoginForm(request.form)
@@ -68,44 +73,27 @@ def signin():
 
     response = make_response()
     response.set_cookie('access_token', access_token)
-
-    session['broadcasts'] = []
-    session['broadcast_id'] = broadcasts[0].id
-
-    for broadcast in broadcasts:
-        session['broadcasts'].append(
-            {'id': broadcast.id, 'title': broadcast.title}
-        )
+    response.set_cookie('broadcast_id', str(broadcasts[0].id))
 
     return response
 
 
 @bp_auth.route('/signout', methods=['GET'])
-@ConsoleAuthorization(Role.ADMIN, Role.DJ)
 def signout():
     response = make_response(redirect(url_for('bp_auth.signin_html')))
-    response.set_cookie('access_token', '')
-    session.clear()
-
-    hashed = access_token_service.hash(request.auth.access_token)
-
-    user_token = user_token_service.get((
-        request.auth.user_id,
-        UserTokenUsage.CONSOLE,
-        hashed
-    ))
-
-    user_token_service.delete(user_token)
-
+    response.set_cookie('access_token', expires=0)
+    response.set_cookie('broadcast_id', expires=0)
     return response
 
 
 @bp_auth.route('/current-broadcast', methods=['PUT'])
 @ConsoleAuthorization(Role.ADMIN, Role.DJ)
-@json_response()
 def change_current_broadcast():
     broadcast_id = int(request.form.get('broadcast_id'))
     if broadcast_id not in request.auth.broadcast_ids:
         raise AccessDenied
 
-    session['broadcast_id'] = broadcast_id
+    response = make_response()
+    response.set_cookie('broadcast_id', str(broadcast_id))
+
+    return response

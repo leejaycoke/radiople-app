@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from flask import request
-from flask import session
 
 from radiople.console.common import make_paging
 from radiople.console.common import get_paging
@@ -54,7 +53,7 @@ def edit_html():
 def get_episode_list():
     paging = get_paging()
     item, total_count = episode_service.get_list(
-        session['broadcast_id'], paging)
+        int(request.cookies.get('broadcast_id')), paging)
 
     response = make_paging(item, total_count, paging.page)
 
@@ -67,7 +66,7 @@ def get_episode_list():
 def get_episode(episode_id):
     episode = episode_service.get(episode_id)
 
-    if episode.broadcast_id != session['broadcast_id']:
+    if episode.broadcast_id != int(request.cookies.get('broadcast_id')):
         raise AccessDenied
 
     return episode
@@ -86,7 +85,7 @@ def post():
 
     data = {
         'storage_id': form.data['storage_id'],
-        'broadcast_id': session['broadcast_id'],
+        'broadcast_id': int(request.cookies.get('broadcast_id')),
         'title': form.data['title'],
         'subtitle': form.data['subtitle'],
         'guest': guest,
@@ -114,7 +113,7 @@ def edit(episode_id):
     if not current:
         raise NotFound
 
-    if current.broadcast_id != session['broadcast_id']:
+    if current.broadcast_id != int(request.cookies.get('broadcast_id')):
         raise AccessDenied
 
     form = EpisodeEditForm(request.form)
@@ -125,7 +124,7 @@ def edit(episode_id):
              for g in request.form.getlist('guest[]') if g.strip() != '']
 
     data = {
-        'broadcast_id': session['broadcast_id'],
+        'broadcast_id': int(request.cookies.get('broadcast_id')),
         'title': form.data['title'],
         'subtitle': form.data['subtitle'],
         'guest': guest,
@@ -153,7 +152,7 @@ def delete(episode_id):
     if not current:
         raise NotFound
 
-    if current.broadcast_id != session['broadcast_id']:
+    if current.broadcast_id != int(request.cookies.get('broadcast_id')):
         raise AccessDenied
 
     episode_service.delete(current)  # delete cascade sb_episode ...

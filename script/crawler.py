@@ -5,10 +5,13 @@ import uuid
 import random
 import logging
 import requests
+import pytz
 
 import mimetypes
 import mutagen
 import feedparser
+
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
@@ -18,8 +21,6 @@ from dateutil import parser
 
 from marshmallow import fields
 from marshmallow import Schema
-
-from radiople.db import Session
 
 from radiople.libs.conoha import ConohaStorage
 
@@ -47,15 +48,19 @@ logger.addHandler(stream)
 
 TEMP_PATH = '/tmp/'
 
-PC_HEADER = {
-    'User-Agent': "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
-}
+PC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
 
 ADMIN_USER_ID = user_service.get_admin_users()[0].id
 ACCESS_TOKEN, _, _ = access_token_service.issue(
     user_id=ADMIN_USER_ID, service='console')
 
 IMAGE_SERVER_URL = config.image.server.url
+
+TIMEZONE = pytz.timezone('Asia/Seoul')
+
+
+session = requests.Session()
+session.headers.update({'User-Agent': PC_USER_AGENT})
 
 
 def create_default_email():
@@ -71,8 +76,7 @@ class Utils(object):
         }
 
         with open(filename, "wb") as f:
-            response = requests.get(
-                url, headers=PC_HEADER, allow_redirects=True, stream=True)
+            response = session.get(url, allow_redirects=True, stream=True)
 
             content_length = int(response.headers.get('Content-Length', 0))
             info['size'] = content_length
@@ -97,6 +101,9 @@ class Utils(object):
 
     @staticmethod
     def get_extension(mime, url):
+        parsed = urlparse(url)
+        url = url.replace("?" + parsed.query, '')
+
         guess_mime = mimetypes.guess_type(url)
         if guess_mime:
             extension = mimetypes.guess_extension(guess_mime[0])
@@ -213,7 +220,7 @@ class Crawler(object):
             logger.info("Create broadcast: %s", feed.get('title'))
             broadcast = self.create_broadcast(feed)
 
-        for item in items[:30]:
+        for item in items:
             if episode_service.exists_title_by_broadcast_id(
                     broadcast.id, item['title']):
                 logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
@@ -288,17 +295,25 @@ class Crawler(object):
         return storage_service.insert(**params)
 
     def create_episode(self, broadcast_id, storage_id, item):
+        air_date = item['air_date'].replace(tzinfo=None)
+        air_date = TIMEZONE.localize(air_date)
+
         data = dict(
             broadcast_id=broadcast_id,
             title=item['title'],
             subtitle=item['subtitle'],
-            air_date=item['air_date'],
+            air_date=air_date,
             storage_id=storage_id
         )
 
-        if episode_service.exists_air_date_by_broadcast_id(
-                broadcast_id, data['air_date']):
-            data['air_date'] = data['air_date'] + timedelta(minutes=-1)
+        exists = True
+        while exists:
+            exists = episode_service.exists_air_date_by_broadcast_id(
+                broadcast_id, air_date)
+            if exists:
+                air_date = air_date + timedelta(minutes=-1)
+                logger.warning(
+                    "EXISTS_EPISODE_AIR_DATE broadcast_id:%d RETRY \"%s\"", broadcast_id, str(air_date))
 
         episode = episode_service.insert(**data)
 

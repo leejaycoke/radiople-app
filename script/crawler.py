@@ -226,7 +226,8 @@ class Crawler(object):
                 logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
                 continue
 
-            storage = self.create_storage(broadcast.user_id, item['content'])
+            storage = self.create_storage(broadcast.user_id, item[
+                                          'content'], item['air_date'])
             logger.info("CREATED_STORAGE %d", storage.id)
             episode = self.create_episode(broadcast.id, storage.id, item)
             logger.info("CREATED_EPISODE %d", episode.id)
@@ -261,14 +262,12 @@ class Crawler(object):
 
         return broadcast
 
-    def create_storage(self, user_id, content):
+    def create_storage(self, user_id, content, date):
         extension = Utils.get_extension(**content)
         filename = Utils.generate_filename(extension)
         data = Utils.download_file(content['url'], filename)
 
         conoha_storage = ConohaStorage()
-        # upload filename, saving filename
-        date = Utils.get_random_date()
         result = conoha_storage.put_object(
             filename, data['filename'], date=date)
 

@@ -44,7 +44,7 @@ formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s')
 stream.setFormatter(formatter)
 logger.addHandler(stream)
 
-TEMP_PATH = '/tmp/'
+TEMP_PATH = config.common.crawler.temp_path
 
 PC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
 
@@ -68,49 +68,62 @@ def create_default_email():
 class Utils(object):
 
     @staticmethod
-    def download_file(url, filename):
-        info = {
-            'filename': Utils.get_filename(filename)
-        }
+    def download_file(url, retry_count=0):
+        try:
+            r = session.head(url, allow_redirects=True)
+            if not r.ok:
+                logger.error("UNKNOWN_HEAD : %s", url)
+                raise Exception
+            info = {
+                'size': int(r.headers['Content-Length']),
+                'mimes': [r.headers['Content-Type']]
+            }
+        except Exception as e:
+            if retry_count == 5:
+                raise Exception(e)
 
-        with open(filename, "wb") as f:
-            response = session.get(url, allow_redirects=True, stream=True)
+            logger.debug("Retry download: %s \"%s\"", url, str(e))
+            retry_count += 1
+            return Utils.download_file(url, retry_count)
 
-            content_length = int(response.headers.get('Content-Length', 0))
-            info['size'] = content_length
+        info['filename'] = uuid.uuid4().hex + \
+            Utils.get_extension(info['mimes'][0])
+        info['full_path'] = TEMP_PATH + info['filename']
 
-            md_size = content_length / (1024 * 1204)
-            logger.debug("Start download [%dMB]: %s", md_size, url)
+        try:
+            with open(info['full_path'], "wb") as f:
+                response = session.get(url, allow_redirects=True, stream=True)
 
-            progress = 0
-            for data in response.iter_content(chunk_size=1024):
-                progress += len(data)
-                f.write(data)
-                done = int(50 * progress / content_length)
-                sys.stdout.write("\r[%s%s]" %
-                                 ('=' * done, ' ' * (50 - done)))
+                md_size = info['size'] / (1024 * 1204)
+                logger.debug("Start download [%dMB]: %s", md_size, url)
 
-            sys.stdout.write('\n')
-            sys.stdout.flush()
+                progress = 0
+                for data in response.iter_content(chunk_size=2048):
+                    progress += len(data)
+                    f.write(data)
+                    done = int(50 * progress / info['size'])
+                    sys.stdout.write("\r[%s%s]" %
+                                     ('=' * done, ' ' * (50 - done)))
 
-        logger.debug("Complete download: %s", filename)
+                sys.stdout.write('\n')
+                sys.stdout.flush()
+
+            logger.debug("Complete download: %s", info['full_path'])
+        except Exception as e:
+            if retry_count == 5:
+                raise Exception(e)
+
+            logger.debug("Retry download: %s \"%s\"", url, str(e))
+            retry_count += 1
+            return Utils.download_file(url, retry_count)
 
         return info
 
     @staticmethod
-    def get_extension(mime, url):
-        parsed = urlparse(url)
-        url = url.replace("?" + parsed.query, '')
-
-        guess_mime = mimetypes.guess_type(url)
-        if guess_mime:
-            extension = mimetypes.guess_extension(guess_mime[0])
-            if not extension:
-                return '.' + guess_mime[0].split('/')[-1]
-        else:
-            extension = mimetypes.guess_extension(mime)
-            if not extension:
-                return '.' + mime.split('/')[-1]
+    def get_extension(mime):
+        extension = mimetypes.guess_extension(mime)
+        if not extension:
+            return '.' + mime.split('/')[-1]
         return extension
 
     @staticmethod
@@ -172,7 +185,7 @@ class Episode(Schema):
     title = fields.Method('get_title')
     subtitle = fields.Method('get_subtitle')
     air_date = fields.Method('get_air_date')
-    content = fields.Method('get_content')
+    url = fields.Method('get_url')
 
     def get_title(self, entry):
         return BeautifulSoup(entry.title, 'html.parser').text.strip()
@@ -183,13 +196,14 @@ class Episode(Schema):
     def get_air_date(self, entry):
         return parser.parse(entry.published)
 
-    def get_content(self, entry):
+    def get_url(self, entry):
         for entry in entry.links:
             mime = entry.get('type')
-            if mime in ACCEPTABLE_MIMES:
-                return {'url': entry.get('href'), 'mime': mime}
-            else:
-                logging.warning("NOT_ACCEPTABLE_CONTENT: %s", mime)
+            if mime != 'text/html' and mime in ACCEPTABLE_MIMES:
+                return entry.get('href')
+
+            logging.error("NOT_ACCEPTABLE_CONTENT: %s", mime)
+            raise Exception
 
 
 class Episodes(Schema):
@@ -214,14 +228,17 @@ class Crawler(object):
             logger.info("Create broadcast: %s", feed.get('title'))
             broadcast = self.create_broadcast(feed)
 
-        for item in items:
+        total_count = len(items)
+        for index, item in enumerate(items):
+            logger.info("TOTAL_BROADCAST %d [%d/%d]",
+                        broadcast.id, index + 1, total_count)
             if episode_service.exists_title_by_broadcast_id(
                     broadcast.id, item['title']):
                 logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
                 continue
 
             storage = self.create_storage(broadcast.user_id, item[
-                                          'content'], item['air_date'])
+                                          'url'], item['air_date'])
             logger.info("CREATED_STORAGE %d", storage.id)
             episode = self.create_episode(broadcast.id, storage.id, item)
             logger.info("CREATED_EPISODE %d", episode.id)
@@ -256,22 +273,20 @@ class Crawler(object):
 
         return broadcast
 
-    def create_storage(self, user_id, content, date):
-        extension = Utils.get_extension(**content)
-        filename = Utils.generate_filename(extension)
-        data = Utils.download_file(content['url'], filename)
+    def create_storage(self, user_id, url, air_date):
+        file_info = Utils.download_file(url)
 
         conoha_storage = ConohaStorage()
         result = conoha_storage.put_object(
-            filename, data['filename'], date=date)
+            file_info['full_path'], file_info['filename'], date=air_date)
 
-        media = Utils.get_media(filename)
+        media = Utils.get_media(file_info['full_path'])
 
         params = {
             'user_id': user_id,
-            'filename': data['filename'],
-            'uploaded_filename': data['filename'],
-            'size': data['size'],
+            'filename': file_info['filename'],
+            'uploaded_filename': file_info['filename'],
+            'size': file_info['size'],
             'url': result['url']
         }
 
@@ -283,21 +298,13 @@ class Crawler(object):
                 'length': media.info.length
             }
         else:
-            params['mimes'] = [content['mime']]
+            params['mimes'] = file_info['mimes']
 
         return storage_service.insert(**params)
 
     def create_episode(self, broadcast_id, storage_id, item):
         air_date = item['air_date'].replace(tzinfo=None)
         air_date = TIMEZONE.localize(air_date)
-
-        data = dict(
-            broadcast_id=broadcast_id,
-            title=item['title'],
-            subtitle=item['subtitle'],
-            air_date=air_date,
-            storage_id=storage_id
-        )
 
         exists = True
         while exists:
@@ -308,6 +315,14 @@ class Crawler(object):
                 logger.warning(
                     "EXISTS_EPISODE_AIR_DATE broadcast_id:%d RETRY \"%s\"", broadcast_id, str(air_date))
 
+        data = dict(
+            broadcast_id=broadcast_id,
+            title=item['title'],
+            subtitle=item['subtitle'],
+            air_date=air_date,
+            storage_id=storage_id
+        )
+
         episode = episode_service.insert(**data)
 
         sb_episode_service.insert(episode_id=episode.id)
@@ -315,9 +330,7 @@ class Crawler(object):
         return episode
 
     def upload_image(self, url):
-        extension = Utils.get_extension(mime='image/jpeg', url=url)
-        filename = Utils.generate_filename(extension)
-        Utils.download_file(url, filename)
+        filename = Utils.download_file(url)
 
         try:
             response = requests.put(
@@ -332,5 +345,12 @@ class Crawler(object):
 
 
 def run(args):
-    crawler = Crawler(args['--feed-url'])
-    crawler.run()
+    if args['--broadcast-id']:
+        broadcast = broadcast_service.get(args['--broadcast-id'])
+        if not broadcast:
+            raise Exception("not exists broadcast: ", broadcast.id)
+        crawler = Crawler(broadcast.feed_url)
+        crawler.run()
+    else:
+        crawler = Crawler(args['--feed-url'])
+        crawler.run()

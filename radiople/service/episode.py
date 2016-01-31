@@ -65,6 +65,11 @@ class EpisodeService(Service):
             .filter(Episode.air_date == air_date).exists()
         ).scalar()
 
+    def get_latest_episode(self, broadcast_id):
+        return Session.query(self.__model__) \
+            .order_by(desc(Episode.air_date)) \
+            .filter(Episode.broadcast_id == broadcast_id).first()
+
 
 class ApiEpisodeService(EpisodeService):
 

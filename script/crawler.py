@@ -181,6 +181,10 @@ class Crawler(object):
             episode = self.create_episode(broadcast.id, storage.id, item)
             logger.info("CREATED_EPISODE %d", episode.id)
 
+        latest_episode = episode_service.get_latest_episode(broadcast.id)
+        broadcast_service.update(
+            broadcast, latest_air_date=latest_episode.air_date)
+
     def parse_feed(self):
         content = requests.get(self.feed_url).content
         data = feedparser.parse(content)
@@ -211,34 +215,40 @@ class Crawler(object):
 
         return broadcast
 
-    def create_storage(self, user_id, url, air_date):
-        file_info = Utils.download_file(url)
+    def create_storage(self, user_id, url, air_date, retry_count=0):
+        try:
+            file_info = Utils.download_file(url)
 
-        conoha_storage = ConohaStorage()
-        result = conoha_storage.put_object(
-            file_info['full_path'], file_info['filename'], date=air_date)
+            conoha_storage = ConohaStorage()
+            result = conoha_storage.put_object(
+                file_info['full_path'], file_info['filename'], date=air_date)
 
-        media = Utils.get_media(file_info['full_path'])
+            media = Utils.get_media(file_info['full_path'])
 
-        params = {
-            'user_id': user_id,
-            'filename': file_info['filename'],
-            'uploaded_filename': file_info['filename'],
-            'size': file_info['size'],
-            'url': result['url']
-        }
-
-        if media is not None:
-            params['mimes'] = media.mime
-            params['extra'] = {
-                'bitrate': media.info.bitrate,
-                'sample_rate': media.info.sample_rate,
-                'length': media.info.length
+            params = {
+                'user_id': user_id,
+                'filename': file_info['filename'],
+                'uploaded_filename': file_info['filename'],
+                'size': file_info['size'],
+                'url': result['url']
             }
-        else:
-            params['mimes'] = file_info['mimes']
 
-        return storage_service.insert(**params)
+            if media is not None:
+                params['mimes'] = media.mime
+                params['extra'] = {
+                    'bitrate': media.info.bitrate,
+                    'sample_rate': media.info.sample_rate,
+                    'length': media.info.length
+                }
+            else:
+                params['mimes'] = file_info['mimes']
+
+            return storage_service.insert(**params)
+        except Exception as e:
+            if retry_count == 5:
+                raise Exception(e)
+            retry_count += 1
+            return self.create_storage(user_id, url, air_date, retry_count)
 
     def create_episode(self, broadcast_id, storage_id, item):
         air_date = item['air_date'].replace(tzinfo=None)

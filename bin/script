@@ -7,6 +7,7 @@ Radiople Script
 
 Usage:
     run.py crawler --feed-url=<url>
+    run.py crawler --broadcast-id=<broadcast_id>
 
 Options:
   -h --help     Show this screen.

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import time
 import uuid
 import random
 import logging
@@ -46,7 +47,7 @@ formatter = logging.Formatter('[%(asctime)s] %(levelname)s %(message)s')
 stream.setFormatter(formatter)
 logger.addHandler(stream)
 
-TEMP_PATH = '/tmp/'
+TEMP_PATH = config.common.crawler.temp_path
 
 PC_USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36"
 
@@ -70,49 +71,62 @@ def create_default_email():
 class Utils(object):
 
     @staticmethod
-    def download_file(url, filename):
-        info = {
-            'filename': Utils.get_filename(filename)
-        }
+    def download_file(url, retry_count=0):
+        try:
+            r = session.head(url, allow_redirects=True)
+            if not r.ok:
+                logger.error("UNKNOWN_HEAD (%d): %s", r.status_code, r.content)
+                raise Exception
+            info = {
+                'size': int(r.headers['Content-Length']),
+                'mimes': [r.headers['Content-Type']]
+            }
+        except Exception as e:
+            if retry_count == 5:
+                raise Exception(e)
+            logger.debug("Retry download: %s \"%s\"", url, str(e))
+            time.sleep(10)
+            retry_count += 1
+            return Utils.download_file(url, retry_count)
 
-        with open(filename, "wb") as f:
-            response = session.get(url, allow_redirects=True, stream=True)
+        info['filename'] = uuid.uuid4().hex + \
+            Utils.get_extension(info['mimes'][0])
+        info['full_path'] = TEMP_PATH + info['filename']
 
-            content_length = int(response.headers.get('Content-Length', 0))
-            info['size'] = content_length
+        try:
+            with open(info['full_path'], "wb") as f:
+                response = session.get(url, allow_redirects=True, stream=True)
 
-            md_size = content_length / (1024 * 1204)
-            logger.debug("Start download [%dMB]: %s", md_size, url)
+                md_size = info['size'] / (1024 * 1204)
+                logger.debug("Start download [%dMB]: %s", md_size, url)
 
-            progress = 0
-            for data in response.iter_content(chunk_size=1024):
-                progress += len(data)
-                f.write(data)
-                done = int(50 * progress / content_length)
-                sys.stdout.write("\r[%s%s]" %
-                                 ('=' * done, ' ' * (50 - done)))
+                progress = 0
+                for data in response.iter_content(chunk_size=2048):
+                    progress += len(data)
+                    f.write(data)
+                    done = int(50 * progress / info['size'])
+                    sys.stdout.write("\r[%s%s]" %
+                                     ('=' * done, ' ' * (50 - done)))
 
-            sys.stdout.write('\n')
-            sys.stdout.flush()
+                sys.stdout.write('\n')
+                sys.stdout.flush()
 
-        logger.debug("Complete download: %s", filename)
+            logger.debug("Complete download: %s", info['full_path'])
+        except Exception as e:
+            if retry_count == 5:
+                raise Exception(e)
+            logger.debug("Retry download: %s \"%s\"", url, str(e))
+            time.sleep(10)
+            retry_count += 1
+            return Utils.download_file(url, retry_count)
 
         return info
 
     @staticmethod
-    def get_extension(mime, url):
-        parsed = urlparse(url)
-        url = url.replace("?" + parsed.query, '')
-
-        guess_mime = mimetypes.guess_type(url)
-        if guess_mime:
-            extension = mimetypes.guess_extension(guess_mime[0])
-            if not extension:
-                return '.' + guess_mime[0].split('/')[-1]
-        else:
-            extension = mimetypes.guess_extension(mime)
-            if not extension:
-                return '.' + mime.split('/')[-1]
+    def get_extension(mime):
+        extension = mimetypes.guess_extension(mime)
+        if not extension:
+            return '.' + mime.split('/')[-1]
         return extension
 
     @staticmethod
@@ -139,6 +153,139 @@ class Utils(object):
     @staticmethod
     def get_random_date(before_days=365):
         return datetime.now() - timedelta(days=random.randint(0, 365))
+
+
+class Crawler(object):
+
+    def __init__(self, feed_url):
+        self.feed_url = feed_url
+
+    def run(self):
+        feed, items = self.parse_feed()
+
+        broadcast = broadcast_service.get_by_feed_url(self.feed_url)
+        if not broadcast:
+            if broadcast_service.exists_title(feed.get('title')):
+                logger.error("Already exists broadcast: %s", feed.get('title'))
+                sys.exit(1)
+
+            logger.info("Create broadcast: %s", feed.get('title'))
+            broadcast = self.create_broadcast(feed)
+
+        total_count = len(items)
+        for index, item in enumerate(items):
+            logger.info("TOTAL_BROADCAST %d [%d/%d]",
+                        broadcast.id, index + 1, total_count)
+            if episode_service.exists_title_by_broadcast_id(
+                    broadcast.id, item['title']):
+                logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
+                continue
+
+            storage = self.create_storage(broadcast.user_id, item[
+                                          'url'], item['air_date'])
+            logger.info("CREATED_STORAGE %d", storage.id)
+            episode = self.create_episode(broadcast.id, storage.id, item)
+            logger.info("CREATED_EPISODE %d", episode.id)
+
+    def parse_feed(self):
+        content = requests.get(self.feed_url).content
+        data = feedparser.parse(content)
+
+        feed = Broadcast().dump(data.feed).data
+        items = Episodes().dump({'episodes': data.entries}).data
+        return feed, items.get('episodes')
+
+    def create_broadcast(self, feed):
+        if feed['icon_image']:
+            image = self.upload_image(feed['icon_image'])
+        else:
+            image = None
+
+        broadcast = broadcast_service.insert(
+            title=feed['title'],
+            subtitle=feed['subtitle'],
+            casting=feed['casting'],
+            icon_image=image,
+            cover_image=image,
+            description=feed['description'],
+            link=feed.get('link'),
+            user_id=ADMIN_USER_ID,
+            feed_url=self.feed_url
+        )
+
+        sb_broadcast_service.insert(broadcast_id=broadcast.id)
+
+        return broadcast
+
+    def create_storage(self, user_id, url, air_date):
+        file_info = Utils.download_file(url)
+
+        conoha_storage = ConohaStorage()
+        result = conoha_storage.put_object(
+            file_info['full_path'], file_info['filename'], date=air_date)
+
+        media = Utils.get_media(file_info['full_path'])
+
+        params = {
+            'user_id': user_id,
+            'filename': file_info['filename'],
+            'uploaded_filename': file_info['filename'],
+            'size': file_info['size'],
+            'url': result['url']
+        }
+
+        if media is not None:
+            params['mimes'] = media.mime
+            params['extra'] = {
+                'bitrate': media.info.bitrate,
+                'sample_rate': media.info.sample_rate,
+                'length': media.info.length
+            }
+        else:
+            params['mimes'] = file_info['mimes']
+
+        return storage_service.insert(**params)
+
+    def create_episode(self, broadcast_id, storage_id, item):
+        air_date = item['air_date'].replace(tzinfo=None)
+        air_date = TIMEZONE.localize(air_date)
+
+        exists = True
+        while exists:
+            exists = episode_service.exists_air_date_by_broadcast_id(
+                broadcast_id, air_date)
+            if exists:
+                air_date = air_date + timedelta(minutes=-1)
+                logger.warning(
+                    "EXISTS_EPISODE_AIR_DATE broadcast_id:%d RETRY \"%s\"", broadcast_id, str(air_date))
+
+        data = dict(
+            broadcast_id=broadcast_id,
+            title=item['title'],
+            subtitle=item['subtitle'],
+            air_date=air_date,
+            storage_id=storage_id
+        )
+
+        episode = episode_service.insert(**data)
+
+        sb_episode_service.insert(episode_id=episode.id)
+
+        return episode
+
+    def upload_image(self, url):
+        filename = Utils.download_file(url)
+
+        try:
+            response = requests.put(
+                IMAGE_SERVER_URL,
+                params={'access_token': ACCESS_TOKEN},
+                files={'file': open(filename, 'rb')}
+            )
+
+            return response.json().get('url')
+        except Exception as e:
+            return None
 
 
 class Broadcast(Schema):
@@ -178,7 +325,7 @@ class Episode(Schema):
     title = fields.Method('get_title')
     subtitle = fields.Method('get_subtitle')
     air_date = fields.Method('get_air_date')
-    content = fields.Method('get_content')
+    url = fields.Method('get_url')
 
     def get_title(self, entry):
         return BeautifulSoup(entry.title, 'html.parser').text.strip()
@@ -189,13 +336,23 @@ class Episode(Schema):
     def get_air_date(self, entry):
         return parser.parse(entry.published)
 
-    def get_content(self, entry):
+    def get_url(self, entry):
+        urls = []
         for entry in entry.links:
             mime = entry.get('type')
+            if mime in ['text/html']:
+                continue
+
             if mime in ACCEPTABLE_MIMES:
-                return {'url': entry.get('href'), 'mime': mime}
-            else:
-                logging.warning("NOT_ACCEPTABLE_CONTENT: %s", mime)
+                urls.append(entry.get('href'))
+
+        if not urls:
+            raise Exception("not acceptable contents")
+
+        if len(urls) > 1:
+            raise Exception("one more links exists %s" % ', '.join(urls))
+
+        return urls[0]
 
 
 class Episodes(Schema):
@@ -203,140 +360,13 @@ class Episodes(Schema):
     episodes = fields.Nested(Episode, many=True)
 
 
-class Crawler(object):
-
-    def __init__(self, feed_url):
-        self.feed_url = feed_url
-
-    def run(self):
-        feed, items = self.parse_feed()
-
-        broadcast = broadcast_service.get_by_feed_url(self.feed_url)
-        if not broadcast:
-            if broadcast_service.exists_title(feed.get('title')):
-                logger.error("Already exists broadcast: %s", feed.get('title'))
-                sys.exit(1)
-
-            logger.info("Create broadcast: %s", feed.get('title'))
-            broadcast = self.create_broadcast(feed)
-
-        for item in items:
-            if episode_service.exists_title_by_broadcast_id(
-                    broadcast.id, item['title']):
-                logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
-                continue
-
-            storage = self.create_storage(broadcast.user_id, item[
-                                          'content'], item['air_date'])
-            logger.info("CREATED_STORAGE %d", storage.id)
-            episode = self.create_episode(broadcast.id, storage.id, item)
-            logger.info("CREATED_EPISODE %d", episode.id)
-
-    def parse_feed(self):
-        content = requests.get(self.feed_url).content
-        data = feedparser.parse(content)
-
-        feed = Broadcast().dump(data.feed).data
-        items = Episodes().dump({'episodes': data.entries}).data
-        return feed, items.get('episodes')
-
-    def create_broadcast(self, feed):
-        if feed['icon_image']:
-            image = self.upload_image(feed['icon_image'])
-        else:
-            image = None
-
-        broadcast = broadcast_service.insert(
-            title=feed['title'],
-            subtitle=feed['subtitle'],
-            casting=feed['casting'],
-            icon_image=image,
-            cover_image=image,
-            description=feed['description'],
-            link=feed.get('link'),
-            user_id=ADMIN_USER_ID,
-            feed_url=self.feed_url
-        )
-
-        sb_broadcast_service.insert(broadcast_id=broadcast.id)
-
-        return broadcast
-
-    def create_storage(self, user_id, content, date):
-        extension = Utils.get_extension(**content)
-        filename = Utils.generate_filename(extension)
-        data = Utils.download_file(content['url'], filename)
-
-        conoha_storage = ConohaStorage()
-        result = conoha_storage.put_object(
-            filename, data['filename'], date=date)
-
-        media = Utils.get_media(filename)
-
-        params = {
-            'user_id': user_id,
-            'filename': data['filename'],
-            'uploaded_filename': data['filename'],
-            'size': data['size'],
-            'url': result['url']
-        }
-
-        if media is not None:
-            params['mimes'] = media.mime
-            params['extra'] = {
-                'bitrate': media.info.bitrate,
-                'sample_rate': media.info.sample_rate,
-                'length': media.info.length
-            }
-        else:
-            params['mimes'] = [content['mime']]
-
-        return storage_service.insert(**params)
-
-    def create_episode(self, broadcast_id, storage_id, item):
-        air_date = item['air_date'].replace(tzinfo=None)
-        air_date = TIMEZONE.localize(air_date)
-
-        data = dict(
-            broadcast_id=broadcast_id,
-            title=item['title'],
-            subtitle=item['subtitle'],
-            air_date=air_date,
-            storage_id=storage_id
-        )
-
-        exists = True
-        while exists:
-            exists = episode_service.exists_air_date_by_broadcast_id(
-                broadcast_id, air_date)
-            if exists:
-                air_date = air_date + timedelta(minutes=-1)
-                logger.warning(
-                    "EXISTS_EPISODE_AIR_DATE broadcast_id:%d RETRY \"%s\"", broadcast_id, str(air_date))
-
-        episode = episode_service.insert(**data)
-
-        sb_episode_service.insert(episode_id=episode.id)
-
-        return episode
-
-    def upload_image(self, url):
-        extension = Utils.get_extension(mime='image/jpeg', url=url)
-        filename = Utils.generate_filename(extension)
-        Utils.download_file(url, filename)
-
-        try:
-            response = requests.put(
-                IMAGE_SERVER_URL,
-                params={'access_token': ACCESS_TOKEN},
-                files={'file': open(filename, 'rb')}
-            )
-
-            return response.json().get('url')
-        except Exception as e:
-            return None
-
-
 def run(args):
-    crawler = Crawler(args['--feed-url'])
-    crawler.run()
+    if args['--broadcast-id']:
+        broadcast = broadcast_service.get(args['--broadcast-id'])
+        if not broadcast:
+            raise Exception("not exists broadcast: ", broadcast.id)
+        crawler = Crawler(broadcast.feed_url)
+        crawler.run()
+    else:
+        crawler = Crawler(args['--feed-url'])
+        crawler.run()

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import sys
+import time
 import uuid
 import logging
 import requests
@@ -72,7 +73,7 @@ class Utils(object):
         try:
             r = session.head(url, allow_redirects=True)
             if not r.ok:
-                logger.error("UNKNOWN_HEAD : %s", url)
+                logger.error("UNKNOWN_HEAD (%d): %s", r.status_code, r.content)
                 raise Exception
             info = {
                 'size': int(r.headers['Content-Length']),
@@ -81,8 +82,8 @@ class Utils(object):
         except Exception as e:
             if retry_count == 5:
                 raise Exception(e)
-
             logger.debug("Retry download: %s \"%s\"", url, str(e))
+            time.sleep(10)
             retry_count += 1
             return Utils.download_file(url, retry_count)
 
@@ -112,8 +113,8 @@ class Utils(object):
         except Exception as e:
             if retry_count == 5:
                 raise Exception(e)
-
             logger.debug("Retry download: %s \"%s\"", url, str(e))
+            time.sleep(10)
             retry_count += 1
             return Utils.download_file(url, retry_count)
 
@@ -146,69 +147,6 @@ class Utils(object):
     @staticmethod
     def generate_filename(extension):
         return '%s%s%s' % (TEMP_PATH, uuid.uuid4().hex, extension)
-
-
-class Broadcast(Schema):
-
-    title = fields.String(default=None)
-    link = fields.Url(default=None)
-    subtitle = fields.String(default=None)
-    description = fields.Method('get_summary')
-    casting = fields.Method('get_casting', default=[])
-    email = fields.Method('get_email')
-    icon_image = fields.Method('get_icon_image')
-    cover_image = fields.Method('get_cover_image')
-
-    def get_casting(self, feed):
-        castings = [c.strip() for c in feed.author.split(',')]
-        for author in feed.authors:
-            if 'name' in author:
-                castings += [c.strip() for c in author.get('name').split(',')]
-        return list(set(castings))
-
-    def get_email(self, feed):
-        return feed.get('author_detail', {}) \
-            .get('email', create_default_email())
-
-    def get_icon_image(self, feed):
-        return feed.get('image', {}).get('href')
-
-    def get_cover_image(self, feed):
-        return feed.get('image', {}).get('href')
-
-    def get_summary(self, feed):
-        return BeautifulSoup(feed.summary, 'html.parser').text
-
-
-class Episode(Schema):
-
-    title = fields.Method('get_title')
-    subtitle = fields.Method('get_subtitle')
-    air_date = fields.Method('get_air_date')
-    url = fields.Method('get_url')
-
-    def get_title(self, entry):
-        return BeautifulSoup(entry.title, 'html.parser').text.strip()
-
-    def get_subtitle(self, entry):
-        return BeautifulSoup(entry.get('subtitle', ''), 'html.parser').text
-
-    def get_air_date(self, entry):
-        return parser.parse(entry.published)
-
-    def get_url(self, entry):
-        for entry in entry.links:
-            mime = entry.get('type')
-            if mime != 'text/html' and mime in ACCEPTABLE_MIMES:
-                return entry.get('href')
-
-            logging.error("NOT_ACCEPTABLE_CONTENT: %s", mime)
-            raise Exception
-
-
-class Episodes(Schema):
-
-    episodes = fields.Nested(Episode, many=True)
 
 
 class Crawler(object):
@@ -342,6 +280,78 @@ class Crawler(object):
             return response.json().get('url')
         except:
             return None
+
+
+class Broadcast(Schema):
+
+    title = fields.String(default=None)
+    link = fields.Url(default=None)
+    subtitle = fields.String(default=None)
+    description = fields.Method('get_summary')
+    casting = fields.Method('get_casting', default=[])
+    email = fields.Method('get_email')
+    icon_image = fields.Method('get_icon_image')
+    cover_image = fields.Method('get_cover_image')
+
+    def get_casting(self, feed):
+        castings = [c.strip() for c in feed.author.split(',')]
+        for author in feed.authors:
+            if 'name' in author:
+                castings += [c.strip() for c in author.get('name').split(',')]
+        return list(set(castings))
+
+    def get_email(self, feed):
+        return feed.get('author_detail', {}) \
+            .get('email', create_default_email())
+
+    def get_icon_image(self, feed):
+        return feed.get('image', {}).get('href')
+
+    def get_cover_image(self, feed):
+        return feed.get('image', {}).get('href')
+
+    def get_summary(self, feed):
+        return BeautifulSoup(feed.summary, 'html.parser').text
+
+
+class Episode(Schema):
+
+    title = fields.Method('get_title')
+    subtitle = fields.Method('get_subtitle')
+    air_date = fields.Method('get_air_date')
+    url = fields.Method('get_url')
+
+    def get_title(self, entry):
+        return BeautifulSoup(entry.title, 'html.parser').text.strip()
+
+    def get_subtitle(self, entry):
+        return BeautifulSoup(entry.get('subtitle', ''), 'html.parser').text
+
+    def get_air_date(self, entry):
+        return parser.parse(entry.published)
+
+    def get_url(self, entry):
+        urls = []
+        for entry in entry.links:
+            mime = entry.get('type')
+            if mime in ['text/html']:
+                continue
+
+            if mime in ACCEPTABLE_MIMES:
+                urls.append(entry.get('href'))
+
+        if not urls:
+            raise Exception("not acceptable contents")
+
+        if len(urls) > 1:
+            raise Exception("one more links exists %s" % ', '.join(urls))
+
+        return urls[0]
+
+
+class Episodes(Schema):
+
+    episodes = fields.Nested(Episode, many=True)
 
 
 def run(args):

@@ -89,8 +89,16 @@ class Utils(object):
             retry_count += 1
             return Utils.download_file(url, retry_count)
 
-        info['filename'] = uuid.uuid4().hex + \
-            Utils.get_extension(info['mimes'][0])
+        try:
+            path = urlparse(url).path
+            extension = '.' + path.split('/')[-1].split('.')[1]
+            if extension not in ['mp2', '.mp3', '.mp4', '.pdf']:
+                extension = Utils.get_extension(info['mimes'][0])
+        except Exception as e:
+            print(str(e))
+            extension = Utils.get_extension(info['mimes'][0])
+
+        info['filename'] = uuid.uuid4().hex + extension
         info['full_path'] = TEMP_PATH + info['filename']
 
         try:

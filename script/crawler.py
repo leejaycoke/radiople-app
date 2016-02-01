@@ -6,6 +6,8 @@ import uuid
 import logging
 import requests
 import pytz
+import json
+import hashlib
 
 import mimetypes
 import mutagen
@@ -15,7 +17,6 @@ from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 
-from datetime import timedelta
 from dateutil import parser
 
 from marshmallow import fields
@@ -69,6 +70,21 @@ def create_default_email():
 class Utils(object):
 
     @staticmethod
+    def create_etag(**kwargs):
+        params = {
+            'broadcast_id': int(kwargs.get('broadcast_id')),
+            'title': kwargs.get('title'),
+            'subtitle': kwargs.get('subtitle', ''),
+            'air_date': kwargs.get('air_date').strftime('%Y-%m-%d %H:%M:%S'),
+            'url': kwargs.get('url'),
+            'description': kwargs.get('description', '')
+        }
+
+        params = json.dumps(sorted(params.items()))
+
+        return hashlib.md5(params.encode()).hexdigest()
+
+    @staticmethod
     def download_file(url, retry_count=0):
         try:
             r = session.head(url, allow_redirects=True)
@@ -89,7 +105,7 @@ class Utils(object):
 
         try:
             path = urlparse(url).path
-            extension = '.' + path.split('/')[-1].split('.')[1]
+            extension = '.' + path.split('/')[-1].split('.')[-1]
             if extension not in ['mp2', '.mp3', '.mp4', '.pdf']:
                 extension = Utils.get_extension(info['mimes'][0])
         except Exception as e:
@@ -174,20 +190,42 @@ class Crawler(object):
             logger.info("Create broadcast: %s", feed.get('title'))
             broadcast = self.create_broadcast(feed)
 
+        # check total count
         total_count = len(items)
+        # count = episode_service.count_by_broadcast_id(broadcast.id)
+        # if total_count == count:
+        #     logger.info("latest episode: %d", count)
+        #     return
+
         for index, item in enumerate(items):
-            logger.info("TOTAL_BROADCAST %d [%d/%d]",
-                        broadcast.id, index + 1, total_count)
-            if episode_service.exists_title_by_broadcast_id(
-                    broadcast.id, item['title']):
-                logger.warning("ALREADY_EXISTS_EPISODE \"%s\"", item['title'])
+            logger.debug("total broadcast %d [%d/%d]",
+                         broadcast.id, index + 1, total_count)
+
+            etag = Utils.create_etag(broadcast_id=broadcast.id, **item)
+            current = episode_service.get_by_etag(broadcast.id, etag)
+            if current:
+                logger.warning("already exists episode %d %s \"%s\"",
+                               current.id, current.etag, current.title)
                 continue
 
-            storage = self.create_storage(broadcast.user_id, item[
-                                          'url'], item['air_date'])
-            logger.info("CREATED_STORAGE %d", storage.id)
-            episode = self.create_episode(broadcast.id, storage.id, item)
-            logger.info("CREATED_EPISODE %d", episode.id)
+            # same_title = episode_service.get_by_title(broadcast.id, item['title'])
+            # if same_title:
+            #     print(">>>>>>>>>>>>> same title")
+            #     diff = same_title.air_date - item['air_date']
+            #     if diff.total_seconds() <= 3600:
+            #         episode_service.update(
+            #             same_title, air_date=item['air_date'])
+            #         print(">>>>>>>>>>>>>>>>>>>>>>> good match")
+            #         continue
+            #     else:
+            #         print(">>>>>>>>>>>>>", diff.total_seconds())
+
+            logger.debug("NEW_EPISODE \"%s\" \"%s\"",
+                         str(item['air_date']), item['title'])
+
+            episode = self.create_episode(broadcast, item, etag)
+            logger.info("CREATED_EPISODE %d %s \"%s\"",
+                        episode.id, episode.etag, episode.title)
 
         latest_episode = episode_service.get_latest_episode(broadcast.id)
         broadcast_service.update(
@@ -216,7 +254,7 @@ class Crawler(object):
             description=feed['description'],
             link=feed.get('link'),
             user_id=ADMIN_USER_ID,
-            feed_url=self.feed_url
+            extra={'feed_url': self.feed_url}
         )
 
         sb_broadcast_service.insert(broadcast_id=broadcast.id)
@@ -258,25 +296,20 @@ class Crawler(object):
             retry_count += 1
             return self.create_storage(user_id, url, air_date, retry_count)
 
-    def create_episode(self, broadcast_id, storage_id, item):
-        air_date = item['air_date'].replace(tzinfo=None)
-        air_date = TIMEZONE.localize(air_date)
-
-        exists = True
-        while exists:
-            exists = episode_service.exists_air_date_by_broadcast_id(
-                broadcast_id, air_date)
-            if exists:
-                air_date = air_date + timedelta(minutes=-1)
-                logger.warning(
-                    "EXISTS_EPISODE_AIR_DATE broadcast_id:%d RETRY \"%s\"", broadcast_id, str(air_date))
+    def create_episode(self, broadcast, item, etag):
+        storage = self.create_storage(broadcast.user_id, item[
+                                      'url'], item['air_date'])
+        logger.debug("created storage %d", storage.id)
 
         data = dict(
-            broadcast_id=broadcast_id,
+            broadcast_id=broadcast.id,
             title=item['title'],
             subtitle=item['subtitle'],
-            air_date=air_date,
-            storage_id=storage_id
+            description=item['description'],
+            air_date=item['air_date'],
+            storage_id=storage.id,
+            extra={'url': item['url']},
+            etag=etag
         )
 
         episode = episode_service.insert(**data)
@@ -329,7 +362,7 @@ class Broadcast(Schema):
         return feed.get('image', {}).get('href')
 
     def get_summary(self, feed):
-        return BeautifulSoup(feed.summary, 'html.parser').text
+        return BeautifulSoup(feed.get('summary', ''), 'html.parser').text
 
 
 class Episode(Schema):
@@ -338,6 +371,7 @@ class Episode(Schema):
     subtitle = fields.Method('get_subtitle')
     air_date = fields.Method('get_air_date')
     url = fields.Method('get_url')
+    description = fields.Method('get_summary')
 
     def get_title(self, entry):
         return BeautifulSoup(entry.title, 'html.parser').text.strip()
@@ -346,7 +380,9 @@ class Episode(Schema):
         return BeautifulSoup(entry.get('subtitle', ''), 'html.parser').text
 
     def get_air_date(self, entry):
-        return parser.parse(entry.published)
+        air_date = parser.parse(entry.published).replace(tzinfo=None)
+        air_date = TIMEZONE.localize(air_date)
+        return air_date
 
     def get_url(self, entry):
         urls = []
@@ -366,6 +402,9 @@ class Episode(Schema):
 
         return urls[0]
 
+    def get_summary(self, entry):
+        return BeautifulSoup(entry.get('summary', ''), 'html.parser').text
+
 
 class Episodes(Schema):
 
@@ -376,8 +415,8 @@ def run(args):
     if args['--broadcast-id']:
         broadcast = broadcast_service.get(args['--broadcast-id'])
         if not broadcast:
-            raise Exception("not exists broadcast: ", broadcast.id)
-        crawler = Crawler(broadcast.feed_url)
+            raise Exception("not exists broadcast: ", args['--broadcast-id'])
+        crawler = Crawler(broadcast.extra['feed_url'])
         crawler.run()
     else:
         crawler = Crawler(args['--feed-url'])

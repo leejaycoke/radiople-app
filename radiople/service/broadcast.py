@@ -41,7 +41,8 @@ class BroadcastService(Service):
 
     def get_by_feed_url(self, feed_url):
         return Session.query(self.__model__) \
-            .filter(Broadcast.feed_url == feed_url).scalar()
+            .filter(Broadcast.extra.contains({'feed_url': feed_url})) \
+            .scalar()
 
     def is_subscriber_scalar(self, user_id, broadcast_id):
         return Session.query(self.__model__) \

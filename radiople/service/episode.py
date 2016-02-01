@@ -10,10 +10,10 @@ from radiople.service import Service
 from radiople.model.episode import Episode
 from radiople.model.episode_like import EpisodeLike
 from radiople.model.history import History
+from radiople.model.storage import Storage
 
 from sqlalchemy import desc
 from sqlalchemy import asc
-from sqlalchemy import and_
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 
@@ -43,14 +43,6 @@ class EpisodeService(Service):
             .correlate(Episode) \
             .as_scalar().label('position')
 
-    def guess_exists_episode(self, broadcast_id, title, air_date):
-        return Session.query(
-            Session.query(self.__model__)
-            .filter(Episode.broadcast_id == broadcast_id)
-            .filter(Episode.title == title)
-            .filter(Episode.air_date == air_date).exists()
-        ).scalar()
-
     def exists_title_by_broadcast_id(self, broadcast_id, title):
         return Session.query(
             Session.query(self.__model__)
@@ -69,6 +61,27 @@ class EpisodeService(Service):
         return Session.query(self.__model__) \
             .order_by(desc(Episode.air_date)) \
             .filter(Episode.broadcast_id == broadcast_id).first()
+
+    def guess_exists_episode(self, broadcast_id, title, air_date):
+        return Session.query(self.__model__) \
+            .filter(Episode.broadcast_id == broadcast_id) \
+            .filter(Episode.title == title) \
+            .filter(Episode.air_date == air_date).scalar()
+
+    def count_by_broadcast_id(self, broadcast_id):
+        return Session.query(self.__model__) \
+            .with_entities(func.count(Episode.id)) \
+            .filter(Episode.broadcast_id == broadcast_id).scalar()
+
+    def get_by_etag(self, broadcast_id, etag):
+        return Session.query(self.__model__) \
+            .filter(Episode.broadcast_id == broadcast_id) \
+            .filter(Episode.etag == etag).scalar()
+
+    def get_by_title(self, broadcast_id, title):
+        return Session.query(self.__model__) \
+            .filter(Episode.broadcast_id == broadcast_id) \
+            .filter(Episode.title == title).scalar()
 
 
 class ApiEpisodeService(EpisodeService):

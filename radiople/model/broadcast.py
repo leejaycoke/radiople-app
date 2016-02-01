@@ -17,6 +17,8 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.orm import object_session
 
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
 
 from radiople.model.common import TimeStampMixin
 from radiople.model.category import Category
@@ -45,7 +47,7 @@ class Broadcast(Base, TimeStampMixin):
     link = Column(String)
     category_id = Column(ForeignKey(Category.id), index=True)
     description = Column(Text)
-    feed_url = Column(String, index=True)
+    extra = Column(MutableDict.as_mutable(JSONB))
     scoreboard = relationship('SbBroadcast', uselist=False, cascade="delete")
     category = relationship('Category', uselist=False)
 

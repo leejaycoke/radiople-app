@@ -18,6 +18,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.orm import object_session
 from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.mutable import MutableDict
 
 from radiople.model.broadcast import Broadcast
 from radiople.model.storage import Storage
@@ -47,6 +49,8 @@ class Episode(Base, TimeStampMixin):
                       default=func.now(), server_default=func.now(),
                       index=True)
     description = Column(Text)
+    etag = Column(String, nullable=False, index=True)
+    extra = Column(MutableDict.as_mutable(JSONB))
     scoreboard = relationship(SbEpisode, uselist=False, cascade="delete")
     broadcast = relationship(Broadcast, uselist=False)
     storage = relationship(Storage, uselist=False)

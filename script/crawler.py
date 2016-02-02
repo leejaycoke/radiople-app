@@ -192,10 +192,10 @@ class Crawler(object):
 
         # check total count
         total_count = len(items)
-        # count = episode_service.count_by_broadcast_id(broadcast.id)
-        # if total_count == count:
-        #     logger.info("latest episode: %d", count)
-        #     return
+        count = episode_service.count_by_broadcast_id(broadcast.id)
+        if total_count == count:
+            logger.info("latest episode: %d", count)
+            return
 
         for index, item in enumerate(items):
             logger.debug("total broadcast %d [%d/%d]",
@@ -207,7 +207,6 @@ class Crawler(object):
                 logger.warning("already exists episode %d %s \"%s\"",
                                current.id, current.etag, current.title)
                 continue
-
             # same_title = episode_service.get_by_title(broadcast.id, item['title'])
             # if same_title:
             #     print(">>>>>>>>>>>>> same title")

@@ -5,6 +5,7 @@ from hurry.filesize import alternative
 
 from radiople.db import Base
 from radiople.model.common import TimeStampMixin
+from radiople.config import config
 
 from sqlalchemy import Column
 from sqlalchemy import String
@@ -16,11 +17,14 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.mutable import MutableDict
 
+
 STORAGE_ID_SEQ = Sequence('storage_id_seq')
 
 ACCEPTABLE_MIMES = ['audio/mp3', 'audio/mpeg', 'application/octet-stream',
                     'audio/mpeg3', 'video/mp4', 'application/pdf', 'mp3',
                     'video/mpeg4']
+
+CONTAINER = config.common.storage.container
 
 
 class FileType(object):
@@ -83,3 +87,7 @@ class Storage(Base, TimeStampMixin):
     @property
     def extension(self):
         return self.filename.rsplit('.', 1)[1]
+
+    @property
+    def object_path(self):
+        return self.url.replace(config.audio.server.url + '/', '')

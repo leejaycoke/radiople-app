@@ -1,13 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import uuid
-import json
-import requests
-
-from dateutil import parser
-
 from datetime import datetime
-from datetime import timedelta
 
 from swiftclient import utils
 from swiftclient.client import Connection
@@ -29,81 +22,6 @@ STORAGE_URL = config.common.storage.url
 STORAGE_PATH = config.common.storage.path
 
 CONTAINER = config.common.storage.container
-
-
-class ConohaStorage(object):
-
-    connection = None
-    token = None
-    expires_at = None
-
-    def refresh_token(self):
-        data = json.dumps({
-            'auth': {
-                'passwordCredentials': {
-                    'username': USER_NAME,
-                    'password': KEY,
-                },
-                'tenantId': TENANT_ID
-            }
-        })
-
-        response = self.request(
-            'POST', AUTH_URL, data=data, is_auth_request=False)
-
-        data = response.json()
-
-        self.token = data['access']['token']['id']
-        self.expires_at = data['access']['token']['expires']
-
-    def head_object(self, filename):
-        url = STORAGE_URL + filename
-        response = self.request('HEAD', url)
-        return response.headers
-
-    def copy_object(self, src_obj, dst_obj):
-        url = STORAGE_URL + src_obj
-        response = self.request(
-            'COPY', url, headers={'Destination': CONTAINER + '/' + dst_obj})
-        return response.headers
-
-    def rename_object(self, src_filename, dst_filename):
-        self.copy_object(src_filename, dst_filename)
-        self.delete_object(src_filename)
-
-    def delete_object(self, obj):
-        url = STORAGE_URL + obj
-        response = self.request('DELETE', url)
-        return response.headers
-
-    def generate_temp_url(self):
-        pass
-
-    def expired(self):
-        return self.token['expired_at'] <= datetime.now()
-
-    def request(self, method, url, data={}, headers={}, is_auth_request=True):
-        if is_auth_request and (not self.token or self.expired):
-            self.refresh_token()
-
-        headers.update({
-            'Accept': 'application/json',
-            'X-Auth-Token': self.token
-        })
-
-        params = {
-            'method': method,
-            'url': url,
-            'headers': headers,
-        }
-
-        if method not in ['GET', 'HEAD'] and data:
-            params['data'] = data
-
-        response = requests.request(**params)
-        return response
-
-conoha_storage = ConohaStorage()
 
 
 class OldConohaStorage(object):

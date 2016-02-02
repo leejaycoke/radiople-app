@@ -14,7 +14,6 @@ AUTH_VERSION = config.common.storage.auth_version
 
 USER_NAME = config.common.storage.user_name
 KEY = config.common.storage.key
-TENANT_ID = config.common.storage.tenant_id
 TENANT_NAME = config.common.storage.tenant_name
 
 STORAGE_FULL_URL = config.common.storage.full_url
@@ -43,8 +42,9 @@ class OldConohaStorage(object):
 
         return STORAGE_URL + signed_path
 
-    def put_object(self, contents, filename):
-        date_folder = datetime.now().strftime('/%d/%m/%Y')
+    def put_object(self, contents, filename, date=None):
+        date = date or datetime.now()
+        date_folder = date.strftime('/%d/%m/%Y')
         container = CONTAINER + date_folder
 
         try:

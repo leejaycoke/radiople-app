@@ -66,7 +66,7 @@ def get_object(d, m, y, filename):
     )
 
     return {
-        'urls': [
+        'audios': [
             {'url': temp_url, 'type': 'audio'}
         ]
     }

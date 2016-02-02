@@ -14,7 +14,6 @@ AUTH_VERSION = config.common.storage.auth_version
 
 USER_NAME = config.common.storage.user_name
 KEY = config.common.storage.key
-TENANT_ID = config.common.storage.tenant_id
 TENANT_NAME = config.common.storage.tenant_name
 
 STORAGE_FULL_URL = config.common.storage.full_url

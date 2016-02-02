@@ -23,7 +23,7 @@ STORAGE_PATH = config.common.storage.path
 CONTAINER = config.common.storage.container
 
 
-class OldConohaStorage(object):
+class ConohaStorage(object):
 
     def __init__(self):
         self.connection = Connection(

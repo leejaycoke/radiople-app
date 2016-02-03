@@ -121,7 +121,7 @@ def comment_get(broadcast_id):
     paging = get_paging()
     item = comment_service.get_list(broadcast_id, paging)
 
-    response = make_paging(item)
+    response = make_paging(*item)
     return response
 
 

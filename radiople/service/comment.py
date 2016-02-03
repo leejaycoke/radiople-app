@@ -42,7 +42,7 @@ class ApiCommentService(CommentService):
 
         cursor = item[-1].id if len(item) > paging.limit else None
 
-        return make_paging(item[:paging.limit], total_count, cursor)
+        return item, total_count, cursor
 
 
 api_service = ApiCommentService()

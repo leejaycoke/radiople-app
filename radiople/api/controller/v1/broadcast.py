@@ -53,7 +53,7 @@ def broadcast_get(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/episode', methods=['GET'])
-@ApiAuthorization(Role.GUEST, Role.USER, Role.DJ)
+@ApiAuthorization(Role.ALL)
 @json_response(EpisodeListResponse)
 def broadcast_episode_get(broadcast_id):
     if not broadcast_service.exists(broadcast_id):

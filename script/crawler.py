@@ -307,13 +307,13 @@ class Crawler(object):
         return episode
 
     def upload_image(self, url):
-        filename = Utils.download_file(url)
+        file_info = Utils.download_file(url)
 
         try:
             response = requests.put(
                 IMAGE_SERVER_URL,
                 params={'access_token': ACCESS_TOKEN},
-                files={'file': open(filename, 'rb')}
+                files={'file': open(file_info['full_path'], 'rb')}
             )
 
             return response.json().get('url')

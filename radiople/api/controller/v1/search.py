@@ -24,7 +24,7 @@ from radiople.service.search_history import api_service as search_history_servic
 def search_broadcast_get():
     paging = get_paging(requires=['q'])
 
-    if not request.auth.is_guest and not paging.cursor:
+    if not request.auth.is_guest() and not paging.cursor:
         search_history_service.insert(
             user_id=request.auth.user_id, keyword=paging.q)
 

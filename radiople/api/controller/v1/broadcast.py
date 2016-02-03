@@ -120,7 +120,9 @@ def comment_get(broadcast_id):
 
     paging = get_paging()
     item = comment_service.get_list(broadcast_id, paging)
-    return item
+
+    response = make_paging(item)
+    return response
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment/<int:comment_id>/report', methods=['PUT'])

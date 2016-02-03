@@ -16,9 +16,14 @@ class StorageService(Service):
             .filter(Storage.filename == filename).scalar()
 
 
+class ApiStorageService(StorageService):
+    pass
+
+
 class ConsoleStorageService(StorageService):
     pass
 
 
 service = StorageService()
+api_service = ApiStorageService()
 console_service = ConsoleStorageService()

@@ -35,7 +35,7 @@ def episode_get(episode_id):
     return episode
 
 
-@api_v1.route('/episode/<int:episode_id>/playlist', methods=['GET'])
+@api_v1.route('/episode/<int:episode_id>/audio', methods=['GET'])
 @ApiAuthorization(Role.ALL)
 @json_response()
 def episode_playlist_get(episode_id):
@@ -44,13 +44,9 @@ def episode_playlist_get(episode_id):
         raise NotFound("존재하지 않는 에피소드입니다.")
 
     conoha_storage = ConohaStorage()
-    podcast_url = conoha_storage.generate_temp_url(episode.storage.object_path)
-    ad_url = conoha_storage.generate_temp_url('rpd-storage/31/01/2016/ad.mp3')
+    url = conoha_storage.generate_temp_url(episode.storage.object_path)
 
-    return {'tracks': [
-        {'id': 1, 'url': ad_url,'type': 'ad'},
-        {'id': episode.storage.id, 'url': podcast_url, 'type': 'podcast'}
-    ]}
+    return {'id': episode.storage.id, 'url': url}
 
 
 @api_v1.route('/episode/<int:episode_id>/next', methods=['GET'], defaults={'switch': 'next'})

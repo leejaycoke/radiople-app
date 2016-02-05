@@ -44,9 +44,12 @@ def episode_playlist_get(episode_id):
         raise NotFound("존재하지 않는 에피소드입니다.")
 
     conoha_storage = ConohaStorage()
-    url = conoha_storage.generate_temp_url(episode.storage.object_path)
+    podcast_url = conoha_storage.generate_temp_url(episode.storage.object_path)
+    ad_url = conoha_storage.generate_temp_url('rpd-storage/31/01/2016/ad.mp3')
+
     return {'tracks': [
-        {'id': episode.storage.id, 'url': url, 'type': episode.storage.file_type}
+        {'id': 1, 'url': ad_url,'type': 'ad'},
+        {'id': episode.storage.id, 'url': podcast_url, 'type': 'podcast'}
     ]}
 
 

@@ -3,6 +3,7 @@
 from radiople.api.controller import api_v1
 
 from flask import request
+from flask import redirect
 
 from radiople.libs.response import json_response
 from radiople.libs.permission import ApiAuthorization
@@ -35,18 +36,31 @@ def episode_get(episode_id):
     return episode
 
 
-@api_v1.route('/episode/<int:episode_id>/audio', methods=['GET'])
+# @api_v1.route('/episode/<int:episode_id>/audio', methods=['GET'])
+# @ApiAuthorization(Role.ALL)
+# @json_response(AudioResponse)
+# def episode_audio_get(episode_id):
+#     episode = episode_service.get(episode_id, with_entities=True)
+#     if not episode:
+#         raise NotFound("존재하지 않는 에피소드입니다.")
+
+#     conoha_storage = ConohaStorage()
+#     url = conoha_storage.generate_temp_url(episode.storage.object_path)
+
+#     return {'episode': episode, 'audio': {'url': url}}
+
+
+@api_v1.route('/audio/<string:filename>', methods=['GET'])
 @ApiAuthorization(Role.ALL)
-@json_response()
-def episode_playlist_get(episode_id):
-    episode = episode_service.get(episode_id, with_entities=True)
-    if not episode:
-        raise NotFound("존재하지 않는 에피소드입니다.")
+def audio_get(filename):
+    storage = storage_service.get_by_filename(filename)
+    if not storage:
+        raise NotFound("음원을 찾을 수 없습니다.")
 
     conoha_storage = ConohaStorage()
-    url = conoha_storage.generate_temp_url(episode.storage.object_path)
+    url = conoha_storage.generate_temp_url(storage.object_path)
 
-    return {'id': episode.storage.id, 'url': url}
+    return redirect(url)
 
 
 @api_v1.route('/episode/<int:episode_id>/next', methods=['GET'], defaults={'switch': 'next'})

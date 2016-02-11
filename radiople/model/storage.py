@@ -24,7 +24,8 @@ ACCEPTABLE_MIMES = ['audio/mp3', 'audio/mpeg', 'application/octet-stream',
                     'audio/mpeg3', 'video/mp4', 'application/pdf', 'mp3',
                     'video/mpeg4']
 
-CONTAINER = config.common.storage.container
+STORAGE_URL = config.common.storage.url
+STORAGE_PATH = config.common.storage.path
 
 
 class FileType(object):
@@ -90,4 +91,12 @@ class Storage(Base, TimeStampMixin):
 
     @property
     def object_path(self):
-        return self.url.replace(config.audio.server.url + '/', '')
+        return self.url.replace(STORAGE_URL + STORAGE_PATH, '')
+
+    @property
+    def file_type(self):
+        if 'video/mp4' in self.mimes:
+            return 'video'
+        elif 'application/pdf' in self.mimes:
+            return 'pdf'
+        return 'audio'

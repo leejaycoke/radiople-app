@@ -23,7 +23,7 @@ STORAGE_PATH = config.common.storage.path
 CONTAINER = config.common.storage.container
 
 
-class OldConohaStorage(object):
+class ConohaStorage(object):
 
     def __init__(self):
         self.connection = Connection(
@@ -32,9 +32,9 @@ class OldConohaStorage(object):
             os_options={'region_name': 'tyo1'}
         )
 
-    def generate_temp_url(self, object_name, seconds=3600, method='GET'):
+    def generate_temp_url(self, obj, seconds=3600, method='GET'):
         signed_path = utils.generate_temp_url(
-            path=STORAGE_PATH + CONTAINER + object_name,
+            path=STORAGE_PATH + obj,
             seconds=seconds,
             key=SIGNED_URL_KEY,
             method=method

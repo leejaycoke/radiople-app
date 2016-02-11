@@ -12,8 +12,11 @@ from radiople.service.episode import api_service as episode_service
 from radiople.service.sb_episode import api_service as sb_episode_service
 from radiople.service.episode_like import api_service as episode_like_service
 from radiople.service.history import api_service as history_service
+from radiople.service.storage import api_service as storage_service
 
 from radiople.api.response.v1.episode import EpisodeResponse
+
+from radiople.libs.conoha import ConohaStorage
 
 from radiople.exceptions import NotFound
 from radiople.exceptions import Conflict
@@ -30,6 +33,20 @@ def episode_get(episode_id):
     episode = episode_service.get(episode_id, with_entities=True)
 
     return episode
+
+
+@api_v1.route('/episode/<int:episode_id>/audio', methods=['GET'])
+@ApiAuthorization(Role.ALL)
+@json_response()
+def episode_playlist_get(episode_id):
+    episode = episode_service.get(episode_id, with_entities=True)
+    if not episode:
+        raise NotFound("존재하지 않는 에피소드입니다.")
+
+    conoha_storage = ConohaStorage()
+    url = conoha_storage.generate_temp_url(episode.storage.object_path)
+
+    return {'id': episode.storage.id, 'url': url}
 
 
 @api_v1.route('/episode/<int:episode_id>/next', methods=['GET'], defaults={'switch': 'next'})

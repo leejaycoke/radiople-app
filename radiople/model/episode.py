@@ -64,7 +64,7 @@ class Episode(Base, TimeStampMixin):
 
     @property
     def activity(self):
-        if request.auth.is_guest:
+        if request.auth.is_guest():
             self._activity = {}
         elif self._activity is None:
             activity = object_session(self).query(Episode) \

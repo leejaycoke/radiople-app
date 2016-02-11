@@ -53,7 +53,7 @@ def broadcast_get(broadcast_id):
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/episode', methods=['GET'])
-@ApiAuthorization(Role.GUEST, Role.USER, Role.DJ)
+@ApiAuthorization(Role.ALL)
 @json_response(EpisodeListResponse)
 def broadcast_episode_get(broadcast_id):
     if not broadcast_service.exists(broadcast_id):
@@ -120,7 +120,9 @@ def comment_get(broadcast_id):
 
     paging = get_paging()
     item = comment_service.get_list(broadcast_id, paging)
-    return item
+
+    response = make_paging(*item)
+    return response
 
 
 @api_v1.route('/broadcast/<int:broadcast_id>/comment/<int:comment_id>/report', methods=['PUT'])

@@ -53,8 +53,6 @@ def user_get(user_id=None):
     if not user:
         raise NotFound("존재하지 않는 사용자입니다.")
 
-    if request.auth.user_id == user_id:
-        return UserPrivateResponse(user)
     return user
 
 

@@ -37,6 +37,7 @@ class BroadcastService(Service):
 
     def get_all(self):
         return Session.query(Broadcast) \
+            .filter(Broadcast.id >= 129) \
             .order_by(asc(Broadcast.id)).all()
 
     def get_by_feed_url(self, feed_url):

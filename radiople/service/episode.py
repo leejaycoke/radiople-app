@@ -83,6 +83,11 @@ class EpisodeService(Service):
             .filter(Episode.broadcast_id == broadcast_id) \
             .filter(Episode.title == title).scalar()
 
+    def get_by_url(self, broadcast_id, url):
+        return Session.query(self.__model__) \
+            .filter(Episode.broadcast_id == broadcast_id) \
+            .filter(Episode.extra.contains({'url': url})).scalar()
+
 
 class ApiEpisodeService(EpisodeService):
 

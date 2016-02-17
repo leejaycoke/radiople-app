@@ -214,6 +214,12 @@ class Crawler(object):
                 logger.debug("update etag %s" % etag)
                 continue
 
+            if item['url'] == '140501KFC065A.mp3':
+                continue
+
+            if item['url'] == '141001jgh.mp3':
+                continue
+
             logger.debug("NEW_EPISODE \"%s\" \"%s\"",
                          str(item['air_date']), item['title'])
 

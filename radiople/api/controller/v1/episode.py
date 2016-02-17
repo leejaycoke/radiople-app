@@ -28,57 +28,49 @@ from radiople.exceptions import BadRequest
 @ApiAuthorization(Role.ALL)
 @json_response(EpisodeResponse)
 def episode_get(episode_id):
-    if not episode_service.exists(episode_id):
+    episode = episode_service.get(episode_id, with_entities=True)
+    if not episode:
         raise NotFound("존재하지 않는 에피소드입니다.")
 
-    episode = episode_service.get(episode_id, with_entities=True)
+    conoha_storage = ConohaStorage()
+    episode.storage.url = conoha_storage.generate_temp_url(
+        episode.storage.object_path)
 
     return episode
 
 
-# @api_v1.route('/episode/<int:episode_id>/audio', methods=['GET'])
-# @ApiAuthorization(Role.ALL)
-# @json_response(AudioResponse)
-# def episode_audio_get(episode_id):
-#     episode = episode_service.get(episode_id, with_entities=True)
-#     if not episode:
-#         raise NotFound("존재하지 않는 에피소드입니다.")
-
-#     conoha_storage = ConohaStorage()
-#     url = conoha_storage.generate_temp_url(episode.storage.object_path)
-
-#     return {'episode': episode, 'audio': {'url': url}}
-
-
-@api_v1.route('/audio/<string:filename>', methods=['GET'])
-@ApiAuthorization(Role.ALL)
-def audio_get(filename):
-    storage = storage_service.get_by_filename(filename)
-    if not storage:
-        raise NotFound("음원을 찾을 수 없습니다.")
-
-    conoha_storage = ConohaStorage()
-    url = conoha_storage.generate_temp_url(storage.object_path)
-
-    return redirect(url)
-
-
-@api_v1.route('/episode/<int:episode_id>/next', methods=['GET'], defaults={'switch': 'next'})
-@api_v1.route('/episode/<int:episode_id>/prev', methods=['GET'], defaults={'switch': 'prev'})
+@api_v1.route('/episode/<int:episode_id>/next', methods=['GET'])
 @ApiAuthorization(Role.ALL)
 @json_response(EpisodeResponse)
-def episode_switch_get(episode_id, switch):
+def episode_next_get(episode_id):
     if not episode_service.exists(episode_id):
         raise NotFound("존재하지않는 에피소드입니다.")
 
-    if switch == 'next':
-        episode = episode_service.get_next(episode_id)
-        if not episode:
-            raise NotFound("가장 최근 에피소드 입니다.")
-    else:
-        episode = episode_service.get_prev(episode_id)
-        if not episode:
-            raise NotFound("가장 처음 에피소드입니다.")
+    episode = episode_service.get_next(episode_id)
+    if not episode:
+        raise NotFound("가장 마지막 에피소드 입니다.")
+
+    conoha_storage = ConohaStorage()
+    episode.storage.url = conoha_storage.generate_temp_url(
+        episode.storage.object_path)
+
+    return episode
+
+
+@api_v1.route('/episode/<int:episode_id>/prev', methods=['GET'])
+@ApiAuthorization(Role.ALL)
+@json_response(EpisodeResponse)
+def episode_prev_get(episode_id):
+    if not episode_service.exists(episode_id):
+        raise NotFound("존재하지않는 에피소드입니다.")
+
+    episode = episode_service.get_prev(episode_id)
+    if not episode:
+        raise NotFound("가장 최근 에피소드입니다.")
+
+    conoha_storage = ConohaStorage()
+    episode.storage.url = conoha_storage.generate_temp_url(
+        episode.storage.object_path)
 
     return episode
 

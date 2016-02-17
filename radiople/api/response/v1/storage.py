@@ -9,3 +9,4 @@ class Storage(Schema):
     filename = fields.String()
     extra = fields.Field()
     mimes = fields.List(fields.String())
+    url = fields.Url()

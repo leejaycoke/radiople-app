@@ -59,5 +59,5 @@ class ConohaStorage(object):
 
         return {
             'filename': filename,
-            'url': config.audio.server.url + date_folder + '/' + filename
+            'url': STORAGE_URL + STORAGE_PATH + container + '/' + filename
         }

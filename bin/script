@@ -8,6 +8,9 @@ Radiople Script
 Usage:
     run.py crawler --feed-url=<url>
     run.py crawler --broadcast-id=<broadcast_id>
+    run.py crawler --broadcast-all
+    run.py broadcast --broadcast-id=<broadcast_id> update (icon-image|cover-image)
+    run.py user --user-id=<user_id> issue (access-token|password)
 
 Options:
   -h --help     Show this screen.

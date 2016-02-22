@@ -108,7 +108,7 @@ class Utils(object):
 
         try:
             path = urlparse(url).path
-            extension = '.' + path.split('/')[-1].split('.')[-1]
+            extension = '.' + path.split('/')[-1].split('.')[-1].lower()
             if extension not in ['mp2', '.mp3', '.mp4', '.pdf']:
                 extension = Utils.get_extension(info['mimes'][0])
         except Exception as e:
@@ -199,10 +199,10 @@ class Crawler(object):
 
         # check total count
         total_count = len(items)
-        count = episode_service.count_by_broadcast_id(broadcast.id)
-        if total_count == count:
-            logger.info("latest episode: %d", count)
-            return
+        # count = episode_service.count_by_broadcast_id(broadcast.id)
+        # if total_count == count:
+        #     logger.info("latest episode: %d", count)
+        #     return
 
         for index, item in enumerate(items):
             logger.debug("total broadcast %d [%d/%d]",
@@ -213,6 +213,18 @@ class Crawler(object):
             if current:
                 logger.warning("already exists episode %d %s \"%s\"",
                                current.id, current.etag, current.title)
+                continue
+
+            current = episode_service.get_by_url(broadcast.id, item['url'])
+            if current:
+                episode_service.update(current, etag=etag)
+                logger.debug("update etag %s" % etag)
+                continue
+
+            if item['url'] == '140501KFC065A.mp3':
+                continue
+
+            if item['url'] == '141001jgh.mp3':
                 continue
 
             logger.debug("NEW_EPISODE \"%s\" \"%s\"",
@@ -413,6 +425,11 @@ def run(args):
             raise Exception("not exists broadcast: ", args['--broadcast-id'])
         crawler = Crawler(broadcast.extra['feed_url'])
         crawler.run()
-    else:
+    elif args['--feed-url']:
         crawler = Crawler(args['--feed-url'])
         crawler.run()
+    else:
+        broadcasts = broadcast_service.get_all()
+        for broadcast in broadcasts:
+            crawler = Crawler(broadcast.extra['feed_url'])
+            crawler.run()

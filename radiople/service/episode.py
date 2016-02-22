@@ -83,6 +83,12 @@ class EpisodeService(Service):
             .filter(Episode.broadcast_id == broadcast_id) \
             .filter(Episode.title == title).scalar()
 
+    def get_by_url(self, broadcast_id, url):
+        item = Session.query(self.__model__) \
+            .filter(Episode.broadcast_id == broadcast_id) \
+            .filter(Episode.extra.contains({'url': url})).all()
+        return item[0] if item else None
+
 
 class ApiEpisodeService(EpisodeService):
 
@@ -93,19 +99,7 @@ class ApiEpisodeService(EpisodeService):
         ).scalar()
 
     def get_next(self, episode_id):
-        """ episode_id보다 최근 에피소드를 가져온다. """
-
-        episode = self.get(episode_id)
-        try:
-            return Session.query(self.__model__) \
-                .filter(Episode.broadcast_id == episode.broadcast_id) \
-                .filter(Episode.air_date > episode.air_date) \
-                .order_by(asc(Episode.air_date)).first()
-        except:
-            return None
-
-    def get_prev(self, episode_id):
-        """ episode_id보다 이 전 에피소드를 가져온다. """
+        """ episode_id의 다음 에피소드를 가져온다. """
 
         episode = self.get(episode_id)
         try:
@@ -113,6 +107,18 @@ class ApiEpisodeService(EpisodeService):
                 .filter(Episode.broadcast_id == episode.broadcast_id) \
                 .filter(Episode.air_date < episode.air_date) \
                 .order_by(desc(Episode.air_date)).first()
+        except:
+            return None
+
+    def get_prev(self, episode_id):
+        """ episode_id보다 이 전(최근) 에피소드를 가져온다. """
+
+        episode = self.get(episode_id)
+        try:
+            return Session.query(self.__model__) \
+                .filter(Episode.broadcast_id == episode.broadcast_id) \
+                .filter(Episode.air_date > episode.air_date) \
+                .order_by(asc(Episode.air_date)).first()
         except:
             return None
 

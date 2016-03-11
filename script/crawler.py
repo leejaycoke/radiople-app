@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+import re
 import sys
 import time
 import uuid
@@ -61,6 +62,9 @@ TIMEZONE = pytz.timezone('Asia/Seoul')
 
 session = requests.Session()
 session.headers.update({'User-Agent': PC_USER_AGENT})
+
+URL_PATTERN = re.compile(r'^(?:http|ftp)s?://(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|localhost|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(?::\d+)?(?:/?|[/?]\S+)$',
+                         re.IGNORECASE | re.UNICODE)
 
 
 def create_default_email():
@@ -145,6 +149,10 @@ class Utils(object):
         return info
 
     @staticmethod
+    def is_valid_url(url):
+        return URL_PATTERN.match(url)
+
+    @staticmethod
     def get_extension(mime):
         extension = mimetypes.guess_extension(mime)
         if not extension:
@@ -192,10 +200,10 @@ class Crawler(object):
 
         # check total count
         total_count = len(items)
-        # count = episode_service.count_by_broadcast_id(broadcast.id)
-        # if total_count == count:
-        #     logger.info("latest episode: %d", count)
-        #     return
+        count = episode_service.count_by_broadcast_id(broadcast.id)
+        if total_count == count:
+            logger.info("latest episode: %d", count)
+            return
 
         for index, item in enumerate(items):
             logger.debug("total broadcast %d [%d/%d]",
@@ -206,7 +214,7 @@ class Crawler(object):
             if current:
                 logger.warning("already exists episode %d %s \"%s\"",
                                current.id, current.etag, current.title)
-                continue
+                return
 
             current = episode_service.get_by_url(broadcast.id, item['url'])
             if current:
@@ -214,10 +222,8 @@ class Crawler(object):
                 logger.debug("update etag %s" % etag)
                 continue
 
-            if item['url'] == '140501KFC065A.mp3':
-                continue
-
-            if item['url'] == '141001jgh.mp3':
+            if not Utils.is_valid_url(item['url']):
+                logger.error("not valid url %s" % item['url'])
                 continue
 
             logger.debug("NEW_EPISODE \"%s\" \"%s\"",

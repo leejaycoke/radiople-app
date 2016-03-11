@@ -28,7 +28,7 @@ def main_news_get():
     themes = theme_service.get_all()
     for theme in themes:
         item = {'theme': theme}
-        broadcasts = theme_broadcast_service.get_broadcasts(theme.id, 2)
+        broadcasts = theme_broadcast_service.get_broadcasts(theme.id)
         if broadcasts:
             item['broadcasts'] = broadcasts
             theme_broadcasts.append(item)

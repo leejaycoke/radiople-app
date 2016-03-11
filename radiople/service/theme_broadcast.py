@@ -31,15 +31,18 @@ class ApiThemeBroadcastService(ThemeBroadcastService):
             .order_by(asc(ThemeBroadcast.seq)) \
             .limit(limit).all()
 
-    def get_broadcasts(self, theme_id, limit):
-        return Session.query(self.__model__) \
+    def get_broadcasts(self, theme_id, limit=None):
+        query = Session.query(self.__model__) \
             .with_entities(Broadcast) \
             .select_from(ThemeBroadcast) \
             .join(Broadcast) \
             .options(joinedload('*', innerjoin=True)) \
             .filter(ThemeBroadcast.theme_id == theme_id) \
             .filter(ThemeBroadcast.is_active) \
-            .order_by(asc(ThemeBroadcast.seq)) \
-            .limit(limit).all()
+            .order_by(asc(ThemeBroadcast.seq))
+
+        if limit:
+            return query.limit(limit).all()
+        return query.all()
 
 api_service = ApiThemeBroadcastService()

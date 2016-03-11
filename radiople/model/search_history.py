@@ -7,18 +7,15 @@ from sqlalchemy import Integer
 from sqlalchemy import Sequence
 from sqlalchemy import String
 from sqlalchemy import ForeignKey
+from sqlalchemy import PrimaryKeyConstraint
 
-from radiople.model.common import CreatedAt
-
-
-SEARCH_HISTORY_ID_SEQ = Sequence('search_history_id_seq')
+from radiople.model.common import TimeStampMixin
 
 
-class SearchHistory(Base, CreatedAt):
+class SearchHistory(Base, TimeStampMixin):
 
     __tablename__ = 'search_history'
+    __table_args__ = (PrimaryKeyConstraint('user_id', 'keyword'), )
 
-    id = Column(Integer, SEARCH_HISTORY_ID_SEQ, primary_key=True,
-                server_default=SEARCH_HISTORY_ID_SEQ.next_value())
     user_id = Column(ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
-    keyword = Column(String, nullable=False)
+    keyword = Column(String, nullable=False, index=True)

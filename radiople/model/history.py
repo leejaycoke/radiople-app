@@ -22,3 +22,4 @@ class History(Base, TimeStampMixin):
     user_id = Column(ForeignKey('user.id', ondelete='CASCADE'),
                      nullable=False, index=True)
     position = Column(BigInteger, nullable=False)
+    episode = relationship('Episode', uselist=False)

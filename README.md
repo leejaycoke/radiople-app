@@ -24,10 +24,10 @@ $ virtualenv venv
 
 This application need some configuration items likes Database server, secret_key ...
 
-Make below files then paste 'contents'.
+Make below files then paste this wiki [contents](https://github.com/leejaycoke/radiople-app/wiki/config).
 
 ```
-$ touch radiople/config/common.conf, api.conf, web.conf, audio.conf, console.conf, image.conf
+$ touch radiople/config/common.conf, api.conf, web.conf, console.conf, image.conf
 ```
 
 # Run server

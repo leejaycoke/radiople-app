@@ -205,7 +205,7 @@ class Crawler(object):
             logger.info("latest episode: %d", count)
             return
 
-        for index, item in enumerate(items):
+        for index, item in enumerate(items[:2]):
             logger.debug("total broadcast %d [%d/%d]",
                          broadcast.id, index + 1, total_count)
 

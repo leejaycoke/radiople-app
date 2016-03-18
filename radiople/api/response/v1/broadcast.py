@@ -11,7 +11,7 @@ class BroadcastScoreboard(Schema):
 
     episode_count = fields.Integer()
     comment_count = fields.Integer()
-    subscriber_count = fields.Integer()
+    subscription_count = fields.Integer()
     rating_count = fields.Integer()
     rating_average = fields.Float()
 

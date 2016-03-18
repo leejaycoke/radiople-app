@@ -41,16 +41,16 @@ class SbBroadcastService(Service):
 
         self.update(current, episode_count=episode_count)
 
-    def refresh_subscriber_count(self, broadcast_id):
+    def refresh_subscription_count(self, broadcast_id):
         current = self.get(broadcast_id)
         if not current:
             return
 
-        subscriber_count = Session.query(Subscription) \
+        subscription_count = Session.query(Subscription) \
             .with_entities(func.count(Subscription.broadcast_id)) \
             .filter(Subscription.broadcast_id == broadcast_id).scalar()
 
-        self.update(current, subscriber_count=subscriber_count)
+        self.update(current, subscription_count=subscription_count)
 
     def refresh_rating(self, broadcast_id):
         current = self.get(broadcast_id)

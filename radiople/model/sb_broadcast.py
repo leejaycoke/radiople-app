@@ -21,7 +21,7 @@ class SbBroadcast(Base):
         Integer, nullable=False, default=0, server_default="0")
     episode_count = Column(
         Integer, nullable=False, default=0, server_default="0")
-    subscriber_count = Column(
+    subscription_count = Column(
         Integer, nullable=False, default=0, server_default="0")
     score = Column(Integer, nullable=False, default=0,
                    server_default="0", index=True)

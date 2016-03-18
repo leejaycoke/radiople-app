@@ -45,8 +45,8 @@ class Paging(object):
         sort = request.args.get('sort')
         return sort
 
-    def get_sort(self, allowed_keys):
-        return self.sort if self.sort in allowed_keys else None
+    def get_sort(self, allowed_keys, default_key=None):
+        return self.sort if self.sort in allowed_keys else default_key
 
     @property
     def by(self):

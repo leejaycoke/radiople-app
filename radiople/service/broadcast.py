@@ -80,20 +80,20 @@ class ApiBroadcastService(BroadcastService):
 
         total_count = query.with_entities(func.count(Broadcast.id)).scalar()
 
-        sort = paging.get_sort(
-            ['popular', 'rating', 'episode_count', 'comment_count']) or 'popular'
+        sort = paging.get_sort(['popular', 'rating', 'subscription_count',
+                                'latest_air_date'], 'popular')
 
         query = query.join(SbBroadcast)
 
         if sort == 'rating':
             query = query.order_by(
                 desc(SbBroadcast.rating_average), desc(Broadcast.id))
-        elif sort == 'episode_count':
+        elif sort == 'subscription_count':
             query = query.order_by(
-                desc(SbBroadcast.episode_count), desc(Broadcast.id))
-        elif sort == 'comment_count':
+                desc(SbBroadcast.subscription_count), desc(Broadcast.id))
+        elif sort == 'latest_air_date':
             query = query.order_by(
-                desc(SbBroadcast.comment_count), desc(Broadcast.id))
+                desc(Broadcast.latest_air_date), desc(Broadcast.id))
         else:
             query = query.order_by(desc(SbBroadcast.score), desc(Broadcast.id))
 

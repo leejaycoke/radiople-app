@@ -1,4 +1,9 @@
 @import url(https://fonts.googleapis.com/earlyaccess/nanumgothic.css);
+
+* {
+  border-radius: 0 !important;
+}
+
 html {
     height: 100%;
 }

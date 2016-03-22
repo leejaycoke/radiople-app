@@ -1,5 +1,5 @@
 <head>
-    {% set controller = uris[0] if uris else 'index' %}
+    {% set controller = constants['paths'][0] %}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>라디오플</title>
@@ -11,6 +11,6 @@
     <script src="{{ url_for('static', filename='radiople/js/service.js') }}"></script>
     <script src="{{ url_for('static', filename='radiople/js/') }}{{ controller }}.js"></script>
     <link href="{{ url_for('static', filename='bootstrap/dist/css/bootstrap.min.css') }}" rel="stylesheet" />
-        <link href="{{ url_for('static', filename='radiople/css/common.css') }}" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='radiople/css/common.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='radiople/css/') }}{{ controller }}.css" rel="stylesheet" />
 </head>

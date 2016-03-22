@@ -24,6 +24,12 @@ from radiople.exceptions import BadRequest
 from radiople.exceptions import Gone
 
 
+@bp_auth.route('/register', methods=['GET'])
+@view_response('auth/register.html')
+def register_get():
+    pass
+
+
 @bp_auth.route('/email-validation', methods=['GET'])
 @view_response('auth/email-validation.html')
 def email_validation_verify_get():

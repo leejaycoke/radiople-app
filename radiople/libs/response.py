@@ -48,7 +48,7 @@ def view_response(layout, bp=None):
             paths = [p.strip()
                      for p in request.path.split('/') if p.strip() != '']
             constants = {
-                'paths': paths
+                'paths': paths if paths else ['index']
             }
 
             if isinstance(data, dict):

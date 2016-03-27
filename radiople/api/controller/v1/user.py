@@ -47,9 +47,12 @@ from radiople.exceptions import Conflict
 
 
 @api_v1.route('/user/<int:user_id>', methods=['GET'])
+@api_v1.route('/user/me', methods=['GET'])
 @ApiAuthorization(Role.ALL)
 @json_response(UserResponse)
 def user_get(user_id=None):
+    user_id = user_id or request.auth.user_id
+
     user = user_service.get(user_id)
     if not user:
         raise NotFound("존재하지 않는 사용자입니다.")
@@ -149,26 +152,33 @@ def user_device_put(user_id):
 
 
 @api_v1.route('/user/<int:user_id>/subscription', methods=['GET'])
+@api_v1.route('/user/me/subscription', methods=['GET'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(BroadcastListResponse)
-def user_subscription_get(user_id):
+def user_subscription_get(user_id=None):
+    user_id = user_id or request.auth.user_id
     paging = get_paging()
     item = subscription_service.get_list_by_user_id(user_id, paging)
     return item
 
 
 @api_v1.route('/user/<int:user_id>/setting', methods=['GET'])
+@api_v1.route('/user/me/setting', methods=['GET'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(SettingResponse)
-def user_setting_get(user_id):
+def user_setting_get(user_id=None):
+    user_id = user_id or request.auth.user_id
     setting = setting_service.get(user_id)
     return setting
 
 
 @api_v1.route('/user/<int:user_id>/setting', methods=['PUT'])
+@api_v1.route('/user/me/setting', methods=['PUT'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response()
-def user_setting_put(user_id):
+def user_setting_put(user_id=None):
+    user_id = user_id or request.auth.user_id
+
     data = {}
 
     if 'all_push' in request.form:
@@ -186,9 +196,12 @@ def user_setting_put(user_id):
 
 
 @api_v1.route('/user/<int:user_id>/notification', methods=['GET'])
+@api_v1.route('/user/me/notification', methods=['GET'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(NotificationListResponse)
-def user_notification_get(user_id):
+def user_notification_get(user_id=None):
+    user_id = user_id or request.auth.user_id
+
     paging = get_paging()
     item, total_count, cursor = notification_service.get_list_by_user_id(
         user_id, paging)
@@ -199,9 +212,12 @@ def user_notification_get(user_id):
 
 
 @api_v1.route('/user/<int:user_id>/history', methods=['GET'])
+@api_v1.route('/user/me/history', methods=['GET'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response(HistoryListResponse)
-def episode_history_get(user_id):
+def episode_history_get(user_id=None):
+    user_id = user_id or request.auth.user_id
+
     paging = get_paging()
     item, total_count, cursor = history_service.get_list(user_id, paging)
 

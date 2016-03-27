@@ -140,8 +140,9 @@ class Authorization(metaclass=ABCMeta):
 
         data = access_token_service.validate(access_token, self.expired_ok)
 
-        if self.required_me and data.get('user_id') != kwargs['user_id']:
-            raise AccessDenied
+        if self.required_me and 'user_id' in kwargs:
+            if data.get('user_id') != kwargs['user_id']:
+                raise AccessDenied
 
         if data.get('service') not in self.allowed_services:
             raise AccessDenied

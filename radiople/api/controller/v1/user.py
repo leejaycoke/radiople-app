@@ -32,6 +32,7 @@ from radiople.api.response.v1.broadcast import BroadcastListResponse
 from radiople.api.response.v1.setting import SettingResponse
 from radiople.api.response.v1.notification import NotificationListResponse
 from radiople.api.response.v1.episode import EpisodeListResponse
+from radiople.api.response.v1.history import HistoryListResponse
 
 from radiople.api.form.user import UserEditPasswordForm
 from radiople.api.form.user import UserEditEmailForm
@@ -199,7 +200,7 @@ def user_notification_get(user_id):
 
 @api_v1.route('/user/<int:user_id>/history', methods=['GET'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
-@json_response(EpisodeListResponse)
+@json_response(HistoryListResponse)
 def episode_history_get(user_id):
     paging = get_paging()
     item, total_count, cursor = history_service.get_list(user_id, paging)

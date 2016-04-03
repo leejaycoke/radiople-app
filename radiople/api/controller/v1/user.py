@@ -15,10 +15,12 @@ from radiople.api.common import extract_user_agent
 
 from radiople.model.user import UserInfo
 from radiople.model.role import Role
+from radiople.model.settings import PlayerFinishActivity
+from radiople.model.settings import SkipTime
 
 from radiople.service.crypto import email_validation_token_service
 from radiople.service.user import api_service as user_service
-from radiople.service.setting import api_service as setting_service
+from radiople.service.settings import api_service as settings_service
 from radiople.service.device import api_service as device_service
 from radiople.service.history import api_service as history_service
 from radiople.service.subscription import api_service as subscription_service
@@ -29,7 +31,7 @@ from radiople.service.user_auth import api_service as user_auth_service
 from radiople.api.response.v1.user import UserResponse
 from radiople.api.response.v1.user import UserPrivateResponse
 from radiople.api.response.v1.broadcast import BroadcastListResponse
-from radiople.api.response.v1.setting import SettingResponse
+from radiople.api.response.v1.settings import SettingsResponse
 from radiople.api.response.v1.notification import NotificationListResponse
 from radiople.api.response.v1.episode import EpisodeListResponse
 from radiople.api.response.v1.history import HistoryListResponse
@@ -162,37 +164,51 @@ def user_subscription_get(user_id=None):
     return item
 
 
-@api_v1.route('/user/<int:user_id>/setting', methods=['GET'])
-@api_v1.route('/user/me/setting', methods=['GET'])
+@api_v1.route('/user/<int:user_id>/settings', methods=['GET'])
+@api_v1.route('/user/me/settings', methods=['GET'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
-@json_response(SettingResponse)
-def user_setting_get(user_id=None):
+@json_response(SettingsResponse)
+def user_settings_get(user_id=None):
     user_id = user_id or request.auth.user_id
-    setting = setting_service.get(user_id)
-    return setting
+    settings = settings_service.get(user_id)
+    return settings
 
 
-@api_v1.route('/user/<int:user_id>/setting', methods=['PUT'])
-@api_v1.route('/user/me/setting', methods=['PUT'])
+@api_v1.route('/user/<int:user_id>/settings', methods=['PUT'])
+@api_v1.route('/user/me/settings', methods=['PUT'])
 @ApiAuthorization(Role.ALL, disallow=[Role.GUEST], required_me=True)
 @json_response()
-def user_setting_put(user_id=None):
+def user_settings_put(user_id=None):
     user_id = user_id or request.auth.user_id
 
     data = {}
 
-    if 'all_push' in request.form:
-        data['all_push'] = request.form.get('all_push') == '1'
+    if 'is_ad_push_active' in request.form:
+        data['is_ad_push_active'] = request.form['is_ad_push_active'] == '1'
 
-    if 'subscription_push' in request.form:
-        data['subscription_push'] = request.form.get(
-            'subscription_push') == '1'
+    if 'is_subscription_push_active' in request.form:
+        data['is_subscription_push_active'] = request.form[
+            'is_subscription_push_active'] == '1'
 
-    if 'user_push' in request.form:
-        data['user_push'] = request.form.get('user_push') == '1'
+    if 'is_user_push_active' in request.form:
+        data['is_user_push_active'] = request.form[
+            'is_user_push_active'] == '1'
 
-    current = setting_service.get(user_id)
-    setting_service.update(current, **data)
+    if 'is_mobile_network_active' in request.form:
+        data['is_mobile_network_active'] = request.form[
+            'is_mobile_network_active'] == '1'
+
+    if 'player_finish_activity' in request.form:
+        if request.form['player_finish_activity'] in PlayerFinishActivity.ALL:
+            data['player_finish_activity'] = request.form[
+                'player_finish_activity']
+
+    if 'skip_seconds' in request.form:
+        if request.form['skip_seconds'] in SkipTime.ALL:
+            data['skip_seconds'] = request.form['skip_seconds']
+
+    current = settings_service.get(user_id)
+    settings_service.update(current, **data)
 
 
 @api_v1.route('/user/<int:user_id>/notification', methods=['GET'])

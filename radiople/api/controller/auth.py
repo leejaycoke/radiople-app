@@ -18,7 +18,7 @@ from radiople.service.crypto import find_password_token_service
 from radiople.service.crypto import email_validation_token_service
 from radiople.service.user import api_service as user_service
 from radiople.service.sb_user import api_service as sb_user_service
-from radiople.service.setting import api_service as setting_service
+from radiople.service.settings import api_service as settings_service
 from radiople.service.user_auth import api_service as user_auth_service
 from radiople.service.user_token import api_service as user_token_service
 from radiople.service.email_auth import api_service as email_auth_service

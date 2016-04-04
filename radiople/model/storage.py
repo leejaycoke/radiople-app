@@ -35,6 +35,7 @@ class FileType(object):
     PDF = 'pdf'
     PPT = 'ppt'
     DOC = 'doc'
+    UNKNOWN = 'unknown'
 
 
 class Storage(Base, TimeStampMixin):
@@ -95,8 +96,10 @@ class Storage(Base, TimeStampMixin):
 
     @property
     def file_type(self):
-        if 'video/mp4' in self.mimes:
-            return 'video'
+        if 'audio/mp3' in self.mimes or 'audio/mpeg' in self.mimes:
+            return FileType.AUDIO
+        elif 'audio/mp4' in self.mimes or 'vidoe/mp4' in self.mimes:
+            return FileType.VIDEO
         elif 'application/pdf' in self.mimes:
-            return 'pdf'
-        return 'audio'
+            return FileType.PDF
+        return FileType.UNKNOWN

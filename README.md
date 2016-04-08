@@ -53,4 +53,4 @@ Service are `api`, `console`, `image`, `web`, `script`
 $./bin/(api|image|web|console) runserver
 ```
 # Thanks
-If you have issue? please let me know [github issue tracker](https://github.com/leejaycoke/radiople-app/issues) or make a email for me leejaycoke@gmail.com.
+If you have any issue? please let me know [github issue tracker](https://github.com/leejaycoke/radiople-app/issues) or make a email for me leejaycoke@gmail.com.

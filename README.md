@@ -25,7 +25,7 @@ Please look up the path `/radiople-app/bin/*`
 * audio: not using.
 
 ### Runnable script
-* script: wrapper for something scripts. included podcast crawler only now
+* script: wrapper for something scripts with podcast crawler
 
 # Installation
 ```

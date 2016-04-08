@@ -10,9 +10,8 @@ from radiople.model.role import Role
 from radiople.service.agreement import api_service as agreement_service
 
 
-@api_v1.route('/agreement/<string:type>', methods=['GET'])
+@api_v1.route('/notice/opensource', methods=['GET'])
 @ApiAuthorization(Role.ALL)
-@view_response('agreement/index.html')
-def agreement_get(type):
-    agreement = agreement_service.get_by_type(type)
-    return dict(agreement=agreement)
+@view_response('opensource/index.html')
+def notice_opensource_get():
+    return dict()

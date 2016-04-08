@@ -80,26 +80,30 @@ class ApiBroadcastService(BroadcastService):
 
         total_count = query.with_entities(func.count(Broadcast.id)).scalar()
 
-        by = paging.get_by(['score', 'latest_air_date']) or 'score'
-
-        if paging.cursor:
-            query = query.filter(tuple_(paging.cursor) <= paging.cursor)
+        sort = paging.get_sort(['popular', 'rating', 'subscription_count',
+                                'latest_air_date'], 'popular')
 
         query = query.join(SbBroadcast)
 
-        if by == 'score':
-            query = query.order_by(desc(SbBroadcast.score), desc(Broadcast.id))
-        else:  # latest_air_date
+        if sort == 'rating':
+            query = query.order_by(
+                desc(SbBroadcast.rating_average), desc(Broadcast.id))
+        elif sort == 'subscription_count':
+            query = query.order_by(
+                desc(SbBroadcast.subscription_count), desc(Broadcast.id))
+        elif sort == 'latest_air_date':
             query = query.order_by(
                 desc(Broadcast.latest_air_date), desc(Broadcast.id))
+        else:
+            query = query.order_by(desc(SbBroadcast.score), desc(Broadcast.id))
 
-        item = query.limit(paging.limit + 1).all()
+        cursor = 1 if not paging.cursor else int(paging.cursor)
+
+        item = query.offset((cursor - 1) * paging.limit) \
+            .limit(paging.limit + 1).all()
 
         if len(item) > paging.limit:
-            if by == 'score':
-                cursor = item[-1].scoreboard.score, item[-1].id
-            else:  # latest_air_date
-                cursor = item[-1].latest_air_date, item[-1].id
+            cursor = cursor + 1
         else:
             cursor = None
 

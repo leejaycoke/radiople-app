@@ -28,9 +28,7 @@ class ApiHistoryService(HistoryService):
             func.count(History.episode_id)
         ).scalar()
 
-        item = query.with_entities(Episode) \
-            .join(Episode, History.episode_id == Episode.id) \
-            .options(joinedload('*', innerjoin=True)) \
+        item = query.options(joinedload('*', innerjoin=True)) \
             .order_by(desc(History.updated_at)) \
             .limit(100).all()
 

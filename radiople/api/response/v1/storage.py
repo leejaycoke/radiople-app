@@ -10,3 +10,4 @@ class Storage(Schema):
     extra = fields.Field()
     mimes = fields.List(fields.String())
     url = fields.Url()
+    file_type = fields.String()

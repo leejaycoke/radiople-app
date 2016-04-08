@@ -83,7 +83,7 @@ def subscription_put(broadcast_id):
         user_id=request.auth.user_id
     )
 
-    sb_broadcast_service.refresh_subscriber_count(broadcast_id)
+    sb_broadcast_service.refresh_subscription_count(broadcast_id)
 
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
 
@@ -104,7 +104,7 @@ def subscription_delete(broadcast_id):
 
     subscription_service.delete(current)
 
-    sb_broadcast_service.refresh_subscriber_count(broadcast_id)
+    sb_broadcast_service.refresh_subscription_count(broadcast_id)
 
     broadcast = broadcast_service.get(broadcast_id, with_entities=True)
 

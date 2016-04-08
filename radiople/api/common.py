@@ -15,10 +15,10 @@ from radiople.exceptions import BadRequest
 class Paging(object):
 
     """
-    sort = 정렬 방식 ('desc, asc')
-    by = 정렬 지정 컬럼 ('score', 'id', 'title', ...)
-    q = 검색어
-    select = 검색 지정 컬럼 ('title', 'subtitle', ...)
+    sort=정렬 지정 값 ('popular', 'rating')
+    by=정렬 방식 ('desc', 'asc')
+    q=검색어
+    select=검색 지정 컬럼 ('title', 'subtitle', ...)
     """
 
     def __init__(self, *args, **kwargs):
@@ -42,11 +42,11 @@ class Paging(object):
 
     @property
     def sort(self):
-        sort = request.args.get('sort', 'desc')
-        return sort if sort in ['desc', 'asc'] else 'desc'
+        sort = request.args.get('sort')
+        return sort
 
-    def get_by(self, allowed_keys):
-        return self.by if self.by in allowed_keys else None
+    def get_sort(self, allowed_keys, default_key=None):
+        return self.sort if self.sort in allowed_keys else default_key
 
     @property
     def by(self):

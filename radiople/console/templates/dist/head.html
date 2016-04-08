@@ -1,4 +1,5 @@
 <head>
+    {% set controller = constants['paths'][0] %}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
     <title>라디오플 파트너</title>
@@ -15,9 +16,9 @@
     <script src="{{ url_for('static', filename='radiople/js/app.js') }}"></script>
     <script src="{{ url_for('static', filename='radiople/js/service.js') }}"></script>
     <script src="{{ url_for('static', filename='radiople/js/common.js') }}"></script>
-    <script src="{{ url_for('static', filename='radiople/js/') }}{{ constants.get('controller', 'index') }}.js"></script>
+    <script src="{{ url_for('static', filename='radiople/js/') }}{{ controller }}.js"></script>
     <link href="{{ url_for('static', filename='bootstrap/dist/css/bootstrap.min.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='radiople/css/common.css') }}" rel="stylesheet" />
     <link href="{{ url_for('static', filename='radiople/css/default.css') }}" rel="stylesheet" />
-    <link href="{{ url_for('static', filename='radiople/css/') }}{{ constants.get('controller', 'index') }}.css" rel="stylesheet" />
+    <link href="{{ url_for('static', filename='radiople/css/') }}{{ controller }}.css" rel="stylesheet" />
 </head>

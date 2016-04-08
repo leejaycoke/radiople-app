@@ -13,10 +13,7 @@ from radiople.exceptions import RadiopleException
 from radiople.exceptions import ServiceUnavailable
 
 
-_SCRIPT_PATH = path.join(path.dirname(path.realpath(__file__)))
-_STATIC_PATH = path.realpath(path.join(_SCRIPT_PATH, '../static'))
-
-app = Flask(__name__, static_folder=_STATIC_PATH)
+app = Flask(__name__)
 
 
 app.debug = config.common.flask.debug

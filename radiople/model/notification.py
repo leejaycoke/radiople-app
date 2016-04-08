@@ -2,14 +2,14 @@
 
 from radiople.db import Base
 
-from sqlalchemy import Integer
+from radiople.model.common import CreatedAt
 from sqlalchemy import Column
-from sqlalchemy import String
-from sqlalchemy import Sequence
 from sqlalchemy import ForeignKey
+from sqlalchemy import Integer
+from sqlalchemy import Sequence
+from sqlalchemy import String
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.mutable import MutableDict
-from radiople.model.common import CreatedAt
 
 
 NOTIFICATION_ID_SEQ = Sequence('notification_id_seq')

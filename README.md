@@ -1,3 +1,5 @@
+(This repository is deprecated. I'm preparing new one which based AWS.)
+
 # Radiople: server application based Flask-Framework
 
 
